@@ -1210,15 +1210,7 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
               <h2>🛠️ 1. Global Setup & Tutors</h2>
             </div>
             <div className="panel-content">
-              <div className="settings-group">
-                <label>Gemini API Key (Saved on Server)</label>
-                <input
-                  type="password"
-                  className="input-key"
-                  placeholder={apiKey ? "••••••••••••••••" : "API Key empty..."}
-                  onChange={(e) => handleSaveApiKey(e.target.value)}
-                />
-              </div>
+
 
               <div className="tutor-templates-section">
                 <h3>Created Tutors ({tutors.length})</h3>
