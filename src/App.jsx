@@ -27,51 +27,39 @@ const sanitizeForLog = (obj) => {
 };
 
 export default function App() {
-  const [apiKey, setApiKey] = useState(
-    localStorage.getItem("gemini_tutor_api_key") || ""
-  );
-  
-  // Navigation
-  const [activeTab, setActiveTab] = useState("coordinator");
+  // Routing State (Simple SPA Pathname and Query parsing)
+  const [route, setRoute] = useState(window.location.pathname);
+  const [searchQuery, setSearchQuery] = useState(window.location.search);
+  const [saveStatus, setSaveStatus] = useState("");
+  const [error, setError] = useState(null);
 
-  // Coordinator Config Settings
-  const [tutorName, setTutorName] = useState(
-    localStorage.getItem("tutor_name") || "Aoede — अवधी AI Tutor"
-  );
-  const [tutorInstructions, setTutorInstructions] = useState(
-    localStorage.getItem("tutor_instructions") || ""
-  );
-  const [lessonPlan, setLessonPlan] = useState(() => {
-    try {
-      const saved = localStorage.getItem("lesson_plan");
-      return saved ? JSON.parse(saved) : [
-        "विराम और जड़त्व (Inertia) के नियम का परिचय (अवधी में)",
-        "बल (Force) और त्वरण (Acceleration) का परिचय चित्र के साथ",
-        "घर्षण (Friction) गुणांक का एनीमेशन और प्रभाव",
-        "यूपी बोर्ड परीक्षा के प्रश्नों पर आधारित एक छोटा क्विज़"
-      ];
-    } catch {
-      return [
-        "विराम और जड़त्व (Inertia) के नियम का परिचय (अवधी में)",
-        "बल (Force) और त्वरण (Acceleration) का परिचय चित्र के साथ",
-        "घर्षण (Friction) गुणांक का एनीमेशन और प्रभाव",
-        "यूपी बोर्ड परीक्षा के प्रश्नों पर आधारित एक छोटा क्विज़"
-      ];
-    }
-  });
-  const [defaultDialect, setDefaultDialect] = useState(
-    localStorage.getItem("default_dialect") || "awadhi"
-  );
-  const [defaultPace, setDefaultPace] = useState(
-    localStorage.getItem("default_pace") || "normal"
-  );
+  // Server state data
+  const [tutors, setTutors] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [apiKey, setApiKey] = useState("");
 
-  // Student Settings (defaults synced from coordinator settings)
-  const [studentName, setStudentName] = useState("अमित कुमार");
-  const [activeDialect, setActiveDialect] = useState(defaultDialect);
-  const [activePace, setActivePace] = useState(defaultPace);
+  // Coordinator Forms State
+  const [tutorName, setTutorName] = useState("");
+  const [tutorInstructions, setTutorInstructions] = useState("");
+  const [lessonPlan, setLessonPlan] = useState([
+    "विराम और जड़त्व (Inertia) के नियम का परिचय (अवधी में)",
+    "बल (Force) और त्वरण (Acceleration) का परिचय चित्र के साथ",
+    "घर्षण (Friction) गुणांक का एनीमेशन और प्रभाव",
+    "यूपी बोर्ड परीक्षा के प्रश्नों पर आधारित एक छोटा क्विज़"
+  ]);
+  const [defaultDialect, setDefaultDialect] = useState("awadhi");
+  const [defaultPace, setDefaultPace] = useState("normal");
+  const [newStepText, setNewStepText] = useState("");
+  const [newStudentName, setNewStudentName] = useState("");
+  const [selectedStudentId, setSelectedStudentId] = useState("");
 
-  // Student Diagnostic Profiles (Updated dynamically by AI Tutor tool calls)
+  // Student Active Session State
+  const [activeStudent, setActiveStudent] = useState(null);
+  const [assignedTutor, setAssignedTutor] = useState(null);
+  const [activeDialect, setActiveDialect] = useState("awadhi");
+  const [activePace, setActivePace] = useState("normal");
+
+  // Student Live Diagnostics Profile
   const [studentGaps, setStudentGaps] = useState([]);
   const [studentStrengths, setStudentStrengths] = useState([]);
   const [studentQuizScore, setStudentQuizScore] = useState(0);
@@ -81,7 +69,6 @@ export default function App() {
   // Active Connection State
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
-  const [error, setError] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
   const [textInput, setTextInput] = useState("");
   const [transcript, setTranscript] = useState([
@@ -93,24 +80,95 @@ export default function App() {
   const [visualCode, setVisualCode] = useState(null);
   const [debugLogs, setDebugLogs] = useState([]);
   const [showDebug, setShowDebug] = useState(false);
-  const [saveStatus, setSaveStatus] = useState("");
-  
-  // Lesson plan builder local state
-  const [newStepText, setNewStepText] = useState("");
 
   const debugLogsRef = useRef([]);
   useEffect(() => {
     debugLogsRef.current = debugLogs;
   }, [debugLogs]);
 
-  // Sync active settings when defaults change
-  useEffect(() => {
-    setActiveDialect(defaultDialect);
-  }, [defaultDialect]);
+  // SPA Navigator
+  const navigateTo = (pathWithSearch) => {
+    window.history.pushState(null, "", pathWithSearch);
+    const [path, search] = pathWithSearch.split("?");
+    setRoute(path);
+    setSearchQuery(search ? "?" + search : "");
+  };
 
   useEffect(() => {
-    setActivePace(defaultPace);
-  }, [defaultPace]);
+    const handlePopState = () => {
+      setRoute(window.location.pathname);
+      setSearchQuery(window.location.search);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
+
+  // Fetch Server State & Polling
+  const fetchState = async () => {
+    try {
+      const res = await fetch("/api/state");
+      const data = await res.json();
+      setTutors(data.tutors || []);
+      setStudents(data.students || []);
+      setApiKey(data.apiKey || "");
+    } catch (err) {
+      console.error("Failed to fetch server state:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchState();
+    let interval = null;
+    if (route === "/coordinator") {
+      interval = setInterval(() => {
+        fetchState();
+      }, 2500);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [route]);
+
+  // Read student detail if id query param exists on student route
+  const parsedSearch = new URLSearchParams(searchQuery);
+  const activeStudentId = parsedSearch.get("studentId");
+
+  const fetchStudentDetail = async (studentId) => {
+    try {
+      const response = await fetch(`/api/student-detail?studentId=${studentId}`);
+      const data = await response.json();
+      if (data.success) {
+        setActiveStudent(data.student);
+        setAssignedTutor(data.tutor);
+        setApiKey(data.apiKey || "");
+        
+        if (data.tutor) {
+          setActiveDialect(data.tutor.dialect || "awadhi");
+          setActivePace(data.tutor.pace || "normal");
+          setStudentCurrentStep(data.student.currentStepIndex || 0);
+          setStudentGaps(data.student.gaps || []);
+          setStudentStrengths(data.student.strengths || []);
+          setStudentQuizScore(data.student.quizScore || 0);
+          setStudentDiagnostics(data.student.diagnostics || "विद्यार्थी का प्रोफाइल अभी खाली है।");
+        }
+      } else {
+        setError("विद्यार्थी रिकॉर्ड प्राप्त करने में विफल: " + data.error);
+        setActiveStudent(null);
+        setAssignedTutor(null);
+      }
+    } catch (err) {
+      console.error("Failed to fetch student details:", err);
+      setError("सर्वर से विद्यार्थी डेटा लोड करने में त्रुटि हुई।");
+    }
+  };
+
+  useEffect(() => {
+    if (route === "/student" && activeStudentId) {
+      fetchStudentDetail(activeStudentId);
+    }
+  }, [route, searchQuery, activeStudentId]);
 
   const logDebug = (direction, type, data) => {
     const time = new Date().toLocaleTimeString();
@@ -132,9 +190,7 @@ export default function App() {
     try {
       const response = await fetch("/api/save-logs", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(logsToSave, null, 2),
       });
       const result = await response.json();
@@ -142,22 +198,154 @@ export default function App() {
         const filename = result.filepath.replace(/^.*[\\\/]/, '');
         setSaveStatus(`Logs auto-saved to /logs/${filename}`);
         setTimeout(() => setSaveStatus(""), 6000);
-      } else {
-        console.error("Failed to save logs to file:", result.error);
       }
     } catch (err) {
       console.error("Error saving logs:", err);
     }
   };
 
-  const saveTutorConfiguration = () => {
-    localStorage.setItem("tutor_name", tutorName);
-    localStorage.setItem("tutor_instructions", tutorInstructions);
-    localStorage.setItem("lesson_plan", JSON.stringify(lessonPlan));
-    localStorage.setItem("default_dialect", defaultDialect);
-    localStorage.setItem("default_pace", defaultPace);
-    setSaveStatus("Tutor configuration saved successfully!");
-    setTimeout(() => setSaveStatus(""), 4000);
+  // Coordinator Actions
+  const handleSaveApiKey = async (key) => {
+    setApiKey(key);
+    try {
+      await fetch("/api/save-api-key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey: key }),
+      });
+      setSaveStatus("API key saved on server!");
+      setTimeout(() => setSaveStatus(""), 3000);
+    } catch (err) {
+      console.error("Failed to save API key on server:", err);
+    }
+  };
+
+  const handleCreateTutor = async (e) => {
+    e.preventDefault();
+    if (!tutorName.trim()) return;
+
+    const newTutor = {
+      id: "tutor_" + Date.now(),
+      name: tutorName.trim(),
+      instructions: tutorInstructions.trim(),
+      lessonPlan,
+      dialect: defaultDialect,
+      pace: defaultPace,
+    };
+
+    try {
+      const response = await fetch("/api/tutors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newTutor),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setTutors(data.tutors);
+        setTutorName("");
+        setTutorInstructions("");
+        setLessonPlan([
+          "विराम और जड़त्व (Inertia) के नियम का परिचय (अवधी में)",
+          "बल (Force) और त्वरण (Acceleration) का परिचय चित्र के साथ",
+          "घर्षण (Friction) गुणांक का एनीमेशन और प्रभाव",
+          "यूपी बोर्ड परीक्षा के प्रश्नों पर आधारित एक छोटा क्विज़"
+        ]);
+        setSaveStatus("Tutor template created!");
+        setTimeout(() => setSaveStatus(""), 3000);
+      }
+    } catch (err) {
+      console.error("Failed to create tutor template:", err);
+    }
+  };
+
+  const handleDeleteTutor = async (tutorId) => {
+    try {
+      const response = await fetch("/api/tutors/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tutorId }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setTutors(data.tutors);
+        setSaveStatus("Tutor template deleted.");
+        setTimeout(() => setSaveStatus(""), 3000);
+      }
+    } catch (err) {
+      console.error("Failed to delete tutor template:", err);
+    }
+  };
+
+  const handleCreateStudent = async (e) => {
+    e.preventDefault();
+    if (!newStudentName.trim()) return;
+
+    const newStudent = {
+      id: "student_" + Date.now(),
+      name: newStudentName.trim(),
+      assignedTutorId: "",
+      gaps: [],
+      strengths: [],
+      quizScore: 0,
+      diagnostics: "विद्यार्थी का प्रोफाइल अभी खाली है। ट्यूटर सत्र शुरू होने पर डायग्नोस्टिक्स रिपोर्ट यहाँ तैयार होगी।",
+      currentStepIndex: 0
+    };
+
+    try {
+      const response = await fetch("/api/students", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newStudent),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setStudents(data.students);
+        setNewStudentName("");
+        setSaveStatus("Student registered!");
+        setTimeout(() => setSaveStatus(""), 3000);
+      }
+    } catch (err) {
+      console.error("Failed to register student:", err);
+    }
+  };
+
+  const handleDeleteStudent = async (studentId) => {
+    try {
+      const response = await fetch("/api/students/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setStudents(data.students);
+        if (selectedStudentId === studentId) {
+          setSelectedStudentId("");
+        }
+        setSaveStatus("Student deleted.");
+        setTimeout(() => setSaveStatus(""), 3000);
+      }
+    } catch (err) {
+      console.error("Failed to delete student:", err);
+    }
+  };
+
+  const handleAssignTutor = async (studentId, tutorId) => {
+    try {
+      const response = await fetch("/api/assign-tutor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId, tutorId }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setSaveStatus("Tutor assigned!");
+        setTimeout(() => setSaveStatus(""), 3000);
+        fetchState();
+      }
+    } catch (err) {
+      console.error("Failed to assign tutor template:", err);
+    }
   };
 
   const restoreDefaultLessonPlan = () => {
@@ -181,11 +369,33 @@ export default function App() {
     setLessonPlan(lessonPlan.filter((_, i) => i !== index));
   };
 
+  // Student Diagnostics Saving Actions
+  const updateStudentDiagnosticsOnServer = async ({ gaps, strengths, quizScore, diagnostics, currentStepIndex }) => {
+    if (!activeStudentId) return;
+    try {
+      await fetch("/api/update-student-diagnostics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId: activeStudentId,
+          gaps,
+          strengths,
+          quizScore,
+          diagnostics,
+          currentStepIndex,
+        }),
+      });
+    } catch (err) {
+      console.error("Failed to update student diagnostics on server:", err);
+    }
+  };
+
   const saveDiagnosticReport = async () => {
+    if (!activeStudent) return;
     const timestamp = new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
     
-    // Construct lesson plan progress checklist
-    const planProgressStr = lessonPlan.map((step, idx) => {
+    const planSteps = assignedTutor ? assignedTutor.lessonPlan : [];
+    const planProgressStr = planSteps.map((step, idx) => {
       let status = "⏱️ Not started";
       if (idx === studentCurrentStep) {
         status = "⚡ In Progress";
@@ -197,15 +407,16 @@ export default function App() {
 
     const reportMarkdown = `# Student Diagnostic Report - Hazratganj Vernacular AI Tutor
 **Date/Time:** ${timestamp} (IST)
-**Student Name:** ${studentName}
-**Assigned Tutor:** ${tutorName}
+**Student Name:** ${activeStudent.name}
+**Student ID:** ${activeStudent.id}
+**Assigned Tutor:** ${assignedTutor ? assignedTutor.name : "N/A"}
 
 ## Session Configuration
 - **Selected Dialect:** ${activeDialect === "awadhi" ? "Awadhi (अवधी)" : activeDialect === "hindi" ? "Hindi (हिंदी)" : "Auto-Adapt"}
 - **Selected Pace:** ${activePace === "slow" ? "Slow (धीमी)" : activePace === "normal" ? "Normal (सामान्य)" : "Fast (तेज़)"}
 
 ## Lesson Plan Progress
-${planProgressStr}
+${planProgressStr || "- No lesson plan assigned."}
 
 ## Diagnostics Profile
 ### Strengths Mastered
@@ -224,9 +435,7 @@ ${studentDiagnostics}
     try {
       const response = await fetch("/api/save-report", {
         method: "POST",
-        headers: {
-          "Content-Type": "text/markdown",
-        },
+        headers: { "Content-Type": "text/markdown" },
         body: reportMarkdown,
       });
       const result = await response.json();
@@ -234,11 +443,69 @@ ${studentDiagnostics}
         const filename = result.filepath.replace(/^.*[\\\/]/, '');
         setSaveStatus(`Diagnostic report saved to /reports/${filename}`);
         setTimeout(() => setSaveStatus(""), 6000);
-      } else {
-        console.error("Failed to save diagnostic report:", result.error);
       }
     } catch (err) {
       console.error("Error saving diagnostic report:", err);
+    }
+  };
+
+  const exportCoordinatorStudentReport = async (studentToExport) => {
+    if (!studentToExport) return;
+    const assignedTutorObj = tutors.find(t => t.id === studentToExport.assignedTutorId);
+    const planSteps = assignedTutorObj ? assignedTutorObj.lessonPlan : [];
+    
+    const planProgressStr = planSteps.map((step, idx) => {
+      let status = "⏱️ Not started";
+      if (idx === studentToExport.currentStepIndex) {
+        status = "⚡ In Progress";
+      } else if (idx < studentToExport.currentStepIndex) {
+        status = "✅ Completed";
+      }
+      return `- Step ${idx + 1}: **${step}** (${status})`;
+    }).join("\n");
+
+    const timestamp = new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
+    const reportMarkdown = `# Student Diagnostic Report - Hazratganj Vernacular AI Tutor
+**Date/Time:** ${timestamp} (IST)
+**Student Name:** ${studentToExport.name}
+**Student ID:** ${studentToExport.id}
+**Assigned Tutor:** ${assignedTutorObj ? assignedTutorObj.name : "N/A"}
+
+## Session Configuration
+- **Dialect:** ${assignedTutorObj ? assignedTutorObj.dialect : "awadhi"}
+- **Pace:** ${assignedTutorObj ? assignedTutorObj.pace : "normal"}
+
+## Lesson Plan Progress
+${planProgressStr || "- No lesson plan assigned."}
+
+## Diagnostics Profile
+### Strengths Mastered
+${studentToExport.strengths && studentToExport.strengths.length > 0 ? studentToExport.strengths.map(s => `- ${s}`).join("\n") : "- No strengths logged yet."}
+
+### Identified Learning Gaps & Weaknesses
+${studentToExport.gaps && studentToExport.gaps.length > 0 ? studentToExport.gaps.map(g => `- ${g}`).join("\n") : "- No learning gaps logged yet."}
+
+### Quiz Performance
+- **Average/Latest Score:** ${studentToExport.quizScore || 0}%
+
+### Coordinator Summary Diagnostics
+${studentToExport.diagnostics || "No diagnostics summary logged yet."}
+`;
+
+    try {
+      const response = await fetch("/api/save-report", {
+        method: "POST",
+        headers: { "Content-Type": "text/markdown" },
+        body: reportMarkdown,
+      });
+      const result = await response.json();
+      if (result.success) {
+        const filename = result.filepath.replace(/^.*[\\\/]/, '');
+        setSaveStatus(`Diagnostic report saved to /reports/${filename}`);
+        setTimeout(() => setSaveStatus(""), 6000);
+      }
+    } catch (err) {
+      console.error("Error exporting report:", err);
     }
   };
 
@@ -269,20 +536,18 @@ ${studentDiagnostics}
     };
   }, []);
 
-  const saveApiKey = (key) => {
-    setApiKey(key);
-    localStorage.setItem("gemini_tutor_api_key", key);
-  };
-
   const connectSession = () => {
     if (!apiKey) {
-      setError("कृपया पहले अपनी Gemini API Key दर्ज करें।");
+      setError("कोऑर्डिनेटर ने अभी तक API key दर्ज नहीं की है। कृपया पहले कोऑर्डिनेटर हब में जाकर एपीआई कुंजी दर्ज करें।");
+      return;
+    }
+    if (!assignedTutor) {
+      setError("विद्यार्थी को अभी कोई ट्यूटर असाइन नहीं किया गया है। कृपया कोऑर्डिनेटर हब में ट्यूटर असाइन करें।");
       return;
     }
 
     setConnecting(true);
     setError(null);
-    setStudentCurrentStep(0);
 
     // Initialize AudioPlayer
     player.current = new AudioPlayer();
@@ -314,11 +579,11 @@ ${studentDiagnostics}
           : "Speak at a normal, natural conversational pace.";
 
         // Format custom lesson plan steps list
-        const lessonStepsStr = lessonPlan.map((step, idx) => `${idx + 1}. ${step}`).join("\n");
+        const lessonStepsStr = assignedTutor.lessonPlan.map((step, idx) => `${idx + 1}. ${step}`).join("\n");
 
         // Dynamic system prompt incorporating coordinator settings
         const systemPrompt = 
-          `You are a helpful, warm, expert vernacular AI physics tutor named "${tutorName}" from the Hazratganj coaching belt, Lucknow.\n` +
+          `You are a helpful, warm, expert vernacular AI physics tutor named "${assignedTutor.name}" from the Hazratganj coaching belt, Lucknow.\n` +
           `Your goal is to teach UP Board students physics concepts following a custom lesson plan defined by their coordinator.\n\n` +
           `LOCKED LESSON PLAN CHECKLIST:\n` +
           `${lessonStepsStr}\n\n` +
@@ -330,7 +595,7 @@ ${studentDiagnostics}
           `- Dialect instructions: ${dialectInstructions}\n` +
           `- Pace instructions: ${paceInstructions}\n\n` +
           `COORDINATOR CUSTOM PERSONA & PEDAGOGY INSTRUCTIONS:\n` +
-          `${tutorInstructions || "No additional custom instructions."}\n\n` +
+          `${assignedTutor.instructions || "No additional custom instructions."}\n\n` +
           `INTERACTIVE VISUAL BLACKBOARD & PROFILE DIAGNOSTICS:\n` +
           `- Your explanations of physics concepts must be accompanied by visuals. Call the tool 'explain_with_visuals' to draw interactive Canvas/SVG animations on the Blackboard.\n` +
           `- You MUST call the tool 'update_learning_profile' regularly to update the student's profile progress (identified weaknesses/gaps, mastered strengths, quiz scores out of 100, a summary, and the index of the active lesson step, starting at 0).\n` +
@@ -340,13 +605,13 @@ ${studentDiagnostics}
         // Send Setup message immediately
         const setupMessage = {
           setup: {
-            model: "models/gemini-3.1-flash-live-preview", // standard Live API model
+            model: "models/gemini-3.1-flash-live-preview", 
             generationConfig: {
               responseModalities: ["AUDIO"],
               speechConfig: {
                 voiceConfig: {
                   prebuiltVoiceConfig: {
-                    voiceName: "Aoede", // Options: Aoede, Puck, Charon, Kore, Fenrir
+                    voiceName: "Aoede", 
                   },
                 },
               },
@@ -459,7 +724,7 @@ ${studentDiagnostics}
 
       ws.current.onerror = (event) => {
         console.error("WebSocket error:", event);
-        setError("WebSocket कनेक्शन में त्रुटि हुई। कृपया जांचें कि आपकी API key सही है या नहीं।");
+        setError("WebSocket कनेक्शन में त्रुटि हुई।");
         logDebug("error", "WS_ERROR", { message: "WebSocket connection error occurred" });
         disconnectSession();
       };
@@ -477,28 +742,23 @@ ${studentDiagnostics}
   };
 
   const disconnectSession = () => {
-    // Save diagnostic report automatically on disconnect if session was active
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
       saveDiagnosticReport();
     }
 
-    // Save session logs to disk file automatically on disconnect
     saveLogsToFile(debugLogsRef.current);
 
-    // Stop recording
     if (recorder.current) {
       recorder.current.stop();
       recorder.current = null;
     }
     setIsRecording(false);
 
-    // Stop audio player
     if (player.current) {
       player.current.close();
       player.current = null;
     }
 
-    // Close WebSocket
     if (ws.current) {
       if (ws.current.readyState === WebSocket.OPEN) {
         ws.current.close();
@@ -511,14 +771,12 @@ ${studentDiagnostics}
   };
 
   const handleServerMessage = (data) => {
-    // Handle interruption
     if (data.serverContent?.interrupted) {
       console.log("Model response interrupted by user talk");
       player.current?.stop();
       return;
     }
 
-    // Handle tool calls at the root level (Gemini Live API protocol)
     if (data.toolCall) {
       const functionCalls = data.toolCall.functionCalls;
       if (functionCalls) {
@@ -533,7 +791,6 @@ ${studentDiagnostics}
               title: args.title,
             });
 
-            // Send tool call response back immediately to satisfy model state
             const responseMsg = {
               toolResponse: {
                 functionResponses: [
@@ -558,13 +815,27 @@ ${studentDiagnostics}
             const args = call.args;
             console.log("Updating student learning profile from tool call:", args);
 
-            if (Array.isArray(args.gaps)) setStudentGaps(args.gaps);
-            if (Array.isArray(args.strengths)) setStudentStrengths(args.strengths);
-            if (typeof args.quizScore === "number") setStudentQuizScore(args.quizScore);
-            if (typeof args.diagnostics === "string") setStudentDiagnostics(args.diagnostics);
-            if (typeof args.currentStepIndex === "number") setStudentCurrentStep(args.currentStepIndex);
+            const newGaps = Array.isArray(args.gaps) ? args.gaps : studentGaps;
+            const newStrengths = Array.isArray(args.strengths) ? args.strengths : studentStrengths;
+            const newQuizScore = typeof args.quizScore === "number" ? args.quizScore : studentQuizScore;
+            const newDiagnostics = typeof args.diagnostics === "string" ? args.diagnostics : studentDiagnostics;
+            const newCurrentStep = typeof args.currentStepIndex === "number" ? args.currentStepIndex : studentCurrentStep;
 
-            // Send tool call response back immediately to satisfy model state
+            setStudentGaps(newGaps);
+            setStudentStrengths(newStrengths);
+            setStudentQuizScore(newQuizScore);
+            setStudentDiagnostics(newDiagnostics);
+            setStudentCurrentStep(newCurrentStep);
+
+            // Persist straight to Vite node server state files
+            updateStudentDiagnosticsOnServer({
+              gaps: newGaps,
+              strengths: newStrengths,
+              quizScore: newQuizScore,
+              diagnostics: newDiagnostics,
+              currentStepIndex: newCurrentStep,
+            });
+
             const responseMsg = {
               toolResponse: {
                 functionResponses: [
@@ -607,13 +878,11 @@ ${studentDiagnostics}
         setTranscript((prev) => {
           const lastMsg = prev[prev.length - 1];
           if (lastMsg && lastMsg.sender === "tutor") {
-            // Append to existing stream
             return [
               ...prev.slice(0, -1),
               { ...lastMsg, text: lastMsg.text + textChunk },
             ];
           } else {
-            // Start a new response turn
             return [...prev, { sender: "tutor", text: textChunk }];
           }
         });
@@ -625,7 +894,6 @@ ${studentDiagnostics}
     if (!connected) return;
 
     if (isRecording) {
-      // Stop recording
       if (recorder.current) {
         recorder.current.stop();
         recorder.current = null;
@@ -636,10 +904,7 @@ ${studentDiagnostics}
         { sender: "user", text: "🎤 (संदेह बोल दिया गया है - AI जवाब दे रहा है)" },
       ]);
     } else {
-      // Start recording
       setError(null);
-      
-      // Stop any playing audio immediately (interruption)
       player.current?.stop();
       
       recorder.current = new AudioRecorder((base64Audio) => {
@@ -670,7 +935,6 @@ ${studentDiagnostics}
     e.preventDefault();
     if (!textInput.trim() || !connected) return;
 
-    // Stop speaking immediately if student types something (barge-in)
     player.current?.stop();
 
     const userText = textInput.trim();
@@ -702,10 +966,11 @@ ${studentDiagnostics}
   };
 
   const triggerNextStep = () => {
+    const planSteps = assignedTutor ? assignedTutor.lessonPlan : [];
     const nextIdx = studentCurrentStep + 1;
-    if (nextIdx < lessonPlan.length) {
-      const commandText = `कृप्या अगले चरण की ओर बढ़ें: "${lessonPlan[nextIdx]}"। मुझे यह विषय समझाएं और ब्लैकबोर्ड पर कोई एनीमेशन दिखाएं।`;
-      setTranscript((prev) => [...prev, { sender: "user", text: `👉 (अगला चरण): ${lessonPlan[nextIdx]}` }]);
+    if (nextIdx < planSteps.length) {
+      const commandText = `कृप्या अगले चरण की ओर बढ़ें: "${planSteps[nextIdx]}"। मुझे यह विषय समझाएं और ब्लैकबोर्ड पर कोई एनीमेशन दिखाएं।`;
+      setTranscript((prev) => [...prev, { sender: "user", text: `👉 (अगला चरण): ${planSteps[nextIdx]}` }]);
       sendTextMessage(commandText);
     } else {
       const commandText = `हमारा पाठ योजना समाप्त हो गया है। कृपया एक बार पूरा संक्षेप में रिवीजन करवाएं।`;
@@ -720,381 +985,537 @@ ${studentDiagnostics}
     sendTextMessage(commandText);
   };
 
-  const progressPercent = lessonPlan.length > 0 
-    ? Math.min(100, Math.round(((studentCurrentStep + 1) / lessonPlan.length) * 100))
+  const activePlanSteps = assignedTutor ? assignedTutor.lessonPlan : [];
+  const progressPercent = activePlanSteps.length > 0 
+    ? Math.min(100, Math.round(((studentCurrentStep + 1) / activePlanSteps.length) * 100))
     : 0;
 
-  return (
-    <div className="app-container">
-      <header className="app-header">
-        <div>
-          <h1>📚 अवधी AI Physics Vernacular Tutor</h1>
-          <p>UP Board परीक्षा तैयारी — लखनऊ हजरतगंज कोचिंग बेल्ट एडमिन व स्टूडेंट हब</p>
+  // ROUTE RENDERING LOGIC
+  
+  // 1. Landing Gateway Page
+  if (route === "/") {
+    return (
+      <div className="landing-container">
+        <div className="landing-hero">
+          <h1>📚 अवधी AI Physics Vernacular Classroom</h1>
+          <p>Lucknow Hazratganj Coaching Belt Hub — UP Board Exams Gateway</p>
         </div>
-        
-        {/* Tab Controls */}
-        <div className="tab-navigation">
-          <button 
-            className={`tab-btn ${activeTab === "coordinator" ? "active" : ""}`}
-            onClick={() => setActiveTab("coordinator")}
-          >
-            🏫 Coordinator Hub
-          </button>
-          <button 
-            className={`tab-btn ${activeTab === "student" ? "active" : ""}`}
-            onClick={() => setActiveTab("student")}
-          >
-            🎓 Student Classroom
-          </button>
+        <div className="landing-grid">
+          <div className="landing-card" onClick={() => navigateTo("/coordinator")}>
+            <div className="landing-card-icon">🏫</div>
+            <h2>Coordinator Portal</h2>
+            <p>Create templates for AI tutors with custom step-by-step lesson plans, register state-board students, assign paths, and monitor performance analytics in real-time.</p>
+            <span className="landing-card-btn">Enter Admin Hub →</span>
+          </div>
+          <div className="landing-card" onClick={() => navigateTo("/student")}>
+            <div className="landing-card-icon">🎓</div>
+            <h2>Student Classroom</h2>
+            <p>Access your personal dashboard. Connect with your assigned vernacular AI tutor, learn concepts via speech, and interact with the animated blackboard.</p>
+            <span className="landing-card-btn">Start Learning →</span>
+          </div>
         </div>
+      </div>
+    );
+  }
 
-        <div className="status-badge">
-          <div
-            className={`status-dot ${
-              connected ? "connected" : connecting ? "connecting" : ""
-            }`}
-          />
-          {connected
-            ? "लाइव कनेक्शन"
-            : connecting
-            ? "कनेक्ट हो रहा है..."
-            : "डिस्कनेक्टेड"}
-        </div>
-      </header>
+  // 2. Coordinator Hub Portal
+  if (route === "/coordinator") {
+    const activeSelectedStudent = students.find(s => s.id === selectedStudentId);
+    
+    return (
+      <div className="app-container">
+        <header className="app-header">
+          <div>
+            <h1 className="clickable-title" onClick={() => navigateTo("/")}>🏫 Coordinator Admin Hub</h1>
+            <p>Manage Tutors, Register state-board Students, and Monitor Live Diagnostic Logs</p>
+          </div>
+          <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+            <button className="btn-back-home" onClick={() => navigateTo("/")}>
+              🔙 Main Gateway
+            </button>
+            {saveStatus && (
+              <span className="debug-badge received" style={{ background: "rgba(34, 197, 94, 0.2)", color: "#4ade80", fontSize: "0.8rem", textTransform: "none" }}>
+                {saveStatus}
+              </span>
+            )}
+          </div>
+        </header>
 
-      {error && <div className="alert-error">⚠️ {error}</div>}
-
-      {/* Main content dynamically switches tabs */}
-      {activeTab === "coordinator" ? (
-        <main className="coordinator-layout">
-          {/* Left Panel: Tutor Designer */}
+        <main className="coordinator-layout three-column">
+          {/* Column 1: Config Settings & Tutor Templates Creator */}
           <section className="glass-panel glow">
             <div className="panel-header">
-              <h2>🛠️ Tutor Creator & Settings</h2>
+              <h2>🛠️ 1. Global Setup & Tutors</h2>
             </div>
             <div className="panel-content">
               <div className="settings-group">
-                <label>Gemini API Key</label>
+                <label>Gemini API Key (Saved on Server)</label>
                 <input
                   type="password"
                   className="input-key"
-                  placeholder="AIzaSy..."
-                  value={apiKey}
-                  onChange={(e) => saveApiKey(e.target.value)}
+                  placeholder={apiKey ? "••••••••••••••••" : "API Key empty..."}
+                  onChange={(e) => handleSaveApiKey(e.target.value)}
                 />
               </div>
 
-              <div className="settings-group">
-                <label>Tutor Name (ट्यूटर का नाम)</label>
-                <input
-                  type="text"
-                  className="input-key"
-                  value={tutorName}
-                  onChange={(e) => setTutorName(e.target.value)}
-                  placeholder="ट्यूटर का नाम लिखें..."
-                />
-              </div>
-
-              <div className="settings-group">
-                <label>Coordinator Instruction Overlay (कस्टम निर्देश)</label>
-                <textarea
-                  className="input-key text-area-instructions"
-                  rows={3}
-                  value={tutorInstructions}
-                  onChange={(e) => setTutorInstructions(e.target.value)}
-                  placeholder="उदा. 'हजरतगंज कोचिंग स्टाइल का प्रयोग करें, हजरतगंज मार्केट का उदाहरण देकर बल समझाएं...'"
-                />
-              </div>
-
-              <div className="settings-row">
-                <div className="settings-group half-width">
-                  <label>Default Dialect (भाषा)</label>
-                  <select 
-                    className="input-key select-custom" 
-                    value={defaultDialect}
-                    onChange={(e) => setDefaultDialect(e.target.value)}
-                  >
-                    <option value="awadhi">Awadhi (अवधी)</option>
-                    <option value="hindi">Hindi (हिंदी)</option>
-                    <option value="auto">Auto-Adapt (स्वचालित)</option>
-                  </select>
-                </div>
-                <div className="settings-group half-width">
-                  <label>Default Pace (गति)</label>
-                  <select 
-                    className="input-key select-custom" 
-                    value={defaultPace}
-                    onChange={(e) => setDefaultPace(e.target.value)}
-                  >
-                    <option value="slow">Slow (धीमी)</option>
-                    <option value="normal">Normal (सामान्य)</option>
-                    <option value="fast">Fast (तेज़)</option>
-                  </select>
+              <div className="tutor-templates-section">
+                <h3>Created Tutors ({tutors.length})</h3>
+                <div className="list-card-container">
+                  {tutors.length === 0 ? (
+                    <p className="no-data-text">कोई ट्यूटर नहीं बना है। नीचे नया ट्यूटर बनाएं।</p>
+                  ) : (
+                    tutors.map(t => (
+                      <div key={t.id} className="crud-list-item">
+                        <div className="crud-item-info">
+                          <strong>{t.name}</strong>
+                          <span>{t.dialect === "awadhi" ? "अवधी" : t.dialect === "hindi" ? "हिंदी" : "Auto"} | {t.pace}</span>
+                        </div>
+                        <button className="btn-crud-delete" onClick={() => handleDeleteTutor(t.id)}>❌</button>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
-              <div className="settings-group lesson-builder-box">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <label>Lesson Plan Steps (पाठ योजना चरण)</label>
-                  <button 
-                    type="button" 
-                    className="btn-text-only"
-                    onClick={restoreDefaultLessonPlan}
-                  >
-                    Restore Defaults
-                  </button>
-                </div>
-                
-                <div className="lesson-plan-list">
-                  {lessonPlan.map((step, index) => (
-                    <div key={index} className="step-builder-item">
-                      <span className="step-num">{index + 1}</span>
-                      <span className="step-text">{step}</span>
-                      <button 
-                        type="button" 
-                        className="btn-delete-step"
-                        onClick={() => handleDeleteStep(index)}
-                      >
-                        ❌
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
-                <form onSubmit={handleAddStep} className="add-step-form">
-                  <input
-                    type="text"
-                    className="input-key add-step-input"
-                    placeholder="नया पाठ चरण जोड़ें (उदा. 'जड़त्व और घर्षण क्विज़')..."
-                    value={newStepText}
-                    onChange={(e) => setNewStepText(e.target.value)}
-                  />
-                  <button type="submit" className="btn-add-step">
-                    ➕ Add
-                  </button>
-                </form>
-              </div>
-
-              <button 
-                className="btn-connect" 
-                onClick={saveTutorConfiguration}
-                style={{ marginTop: "1rem" }}
-              >
-                💾 Save Tutor Configuration
-              </button>
-            </div>
-          </section>
-
-          {/* Right Panel: Student Dashboard Monitor */}
-          <section className="glass-panel">
-            <div className="panel-header">
-              <h2>📊 Live Student Monitor</h2>
-            </div>
-            <div className="panel-content dashboard-content">
-              <div className="student-profile-header">
-                <div className="settings-group" style={{ flexGrow: 1 }}>
-                  <label>Active Student Name (छात्र का नाम)</label>
+              <form onSubmit={handleCreateTutor} className="tutor-create-form border-top">
+                <h3>Create New Tutor Template</h3>
+                <div className="settings-group">
+                  <label>Tutor Name</label>
                   <input
                     type="text"
                     className="input-key"
-                    value={studentName}
-                    onChange={(e) => setStudentName(e.target.value)}
+                    required
+                    value={tutorName}
+                    onChange={(e) => setTutorName(e.target.value)}
+                    placeholder="उदा. भौतिकी गुरु"
                   />
                 </div>
-                <div className="quiz-score-circle">
-                  <div className="score-val">{studentQuizScore}%</div>
-                  <div className="score-lbl">Quiz Score</div>
+                <div className="settings-group">
+                  <label>Custom Instructions Persona Overlay</label>
+                  <textarea
+                    className="input-key text-area-instructions"
+                    rows={2}
+                    value={tutorInstructions}
+                    onChange={(e) => setTutorInstructions(e.target.value)}
+                    placeholder="उदा. 'उदार बनें, हजरतगंज गोमती नदी के उदाहरणों का प्रयोग करें...'"
+                  />
                 </div>
-              </div>
+                <div className="settings-row">
+                  <div className="settings-group half-width">
+                    <label>Dialect</label>
+                    <select className="input-key select-custom" value={defaultDialect} onChange={(e) => setDefaultDialect(e.target.value)}>
+                      <option value="awadhi">Awadhi (अवधी)</option>
+                      <option value="hindi">Hindi (हिंदी)</option>
+                      <option value="auto">Auto-Adapt (स्वचालित)</option>
+                    </select>
+                  </div>
+                  <div className="settings-group half-width">
+                    <label>Pace</label>
+                    <select className="input-key select-custom" value={defaultPace} onChange={(e) => setDefaultPace(e.target.value)}>
+                      <option value="slow">Slow (धीमी)</option>
+                      <option value="normal">Normal (सामान्य)</option>
+                      <option value="fast">Fast (तेज़)</option>
+                    </select>
+                  </div>
+                </div>
 
-              {/* Progress Indicator */}
-              <div className="dashboard-progress-section">
-                <div className="progress-labels">
-                  <span>Lesson Progress</span>
-                  <span>Step {studentCurrentStep + 1} of {lessonPlan.length}</span>
-                </div>
-                <div className="progress-track-bg">
-                  <div className="progress-fill" style={{ width: `${progressPercent}%` }} />
-                </div>
-                <p className="active-step-hint">
-                  <strong>Active Step:</strong> {lessonPlan[studentCurrentStep] || "Not Started"}
-                </p>
-              </div>
-
-              {/* Diagnosed Gaps */}
-              <div className="diagnostics-card">
-                <h3>⚠️ Diagnosed Learning Gaps & Weaknesses</h3>
-                {studentGaps.length === 0 ? (
-                  <p className="no-data-text">कोई कमजोरी या अंतर अभी तक रिपोर्ट नहीं किया गया है।</p>
-                ) : (
-                  <div className="badges-container">
-                    {studentGaps.map((gap, i) => (
-                      <span key={i} className="badge gap-badge">🔍 {gap}</span>
+                <div className="settings-group lesson-builder-box" style={{ marginTop: "0.5rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <label>Lesson Roadmap Steps</label>
+                    <button type="button" className="btn-text-only" onClick={restoreDefaultLessonPlan}>Restore Defaults</button>
+                  </div>
+                  
+                  <div className="lesson-plan-list small-height">
+                    {lessonPlan.map((step, idx) => (
+                      <div key={idx} className="step-builder-item">
+                        <span className="step-num">{idx + 1}</span>
+                        <span className="step-text">{step}</span>
+                        <button type="button" className="btn-delete-step" onClick={() => handleDeleteStep(idx)}>❌</button>
+                      </div>
                     ))}
                   </div>
-                )}
-              </div>
-
-              {/* Mastered Strengths */}
-              <div className="diagnostics-card">
-                <h3>✅ Mastered Strengths & Concepts</h3>
-                {studentStrengths.length === 0 ? (
-                  <p className="no-data-text">कोई महारत हासिल अवधारणा अभी तक रिपोर्ट नहीं की गई है।</p>
-                ) : (
-                  <div className="badges-container">
-                    {studentStrengths.map((str, i) => (
-                      <span key={i} className="badge strength-badge">⚡ {str}</span>
-                    ))}
+                  <div className="add-step-form">
+                    <input
+                      type="text"
+                      className="input-key add-step-input"
+                      placeholder="नया पाठ चरण..."
+                      value={newStepText}
+                      onChange={(e) => setNewStepText(e.target.value)}
+                    />
+                    <button type="button" className="btn-add-step" onClick={(e) => handleAddStep(e)}>➕</button>
                   </div>
-                )}
-              </div>
-
-              {/* Diagnostic Summary */}
-              <div className="diagnostics-card flex-grow-card">
-                <h3>📝 Profile Diagnostics Summary</h3>
-                <div className="summary-text-box">
-                  {studentDiagnostics}
                 </div>
-              </div>
 
-              <div className="report-actions" style={{ display: "flex", gap: "1rem" }}>
-                <button 
-                  className="btn-connect" 
-                  style={{ flex: 1 }}
-                  onClick={saveDiagnosticReport}
-                >
-                  📥 Export Markdown Report
+                <button type="submit" className="btn-connect" style={{ marginTop: "0.75rem", width: "100%" }}>
+                  ➕ Create Tutor Template
                 </button>
+              </form>
+            </div>
+          </section>
+
+          {/* Column 2: Students registry & assignments manager */}
+          <section className="glass-panel glow">
+            <div className="panel-header">
+              <h2>👥 2. Student Roster & Assignments</h2>
+            </div>
+            <div className="panel-content">
+              <form onSubmit={handleCreateStudent} className="student-register-form">
+                <h3>Register Student Profile</h3>
+                <div className="add-step-form">
+                  <input
+                    type="text"
+                    className="input-key"
+                    required
+                    placeholder="छात्र का नाम लिखें..."
+                    value={newStudentName}
+                    onChange={(e) => setNewStudentName(e.target.value)}
+                  />
+                  <button type="submit" className="btn-add-step">➕ Register</button>
+                </div>
+              </form>
+
+              <div className="student-assignments-section" style={{ marginTop: "1rem" }}>
+                <h3>Assigned Students & Tutors</h3>
+                <div className="list-card-container scrollable-roster">
+                  {students.length === 0 ? (
+                    <p className="no-data-text">कोई छात्र पंजीकृत नहीं है। ऊपर नया छात्र जोड़ें।</p>
+                  ) : (
+                    students.map(s => (
+                      <div key={s.id} className="crud-list-item assign-row">
+                        <div className="crud-item-info">
+                          <strong>{s.name}</strong>
+                          <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>ID: {s.id}</span>
+                        </div>
+                        <div className="assign-controls">
+                          <select
+                            value={s.assignedTutorId || ""}
+                            onChange={(e) => handleAssignTutor(s.id, e.target.value)}
+                            className="input-key select-custom select-inline"
+                          >
+                            <option value="">-- No Tutor --</option>
+                            {tutors.map(t => (
+                              <option key={t.id} value={t.id}>{t.name}</option>
+                            ))}
+                          </select>
+                          <button className="btn-crud-delete" onClick={() => handleDeleteStudent(s.id)}>❌</button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
           </section>
-        </main>
-      ) : (
-        <main className="main-grid">
-          {/* Left Column: Student Classroom */}
-          <section className="glass-panel glow">
-            <div className="panel-header">
-              <h2>🗣️ AI Classroom: {tutorName}</h2>
-            </div>
 
+          {/* Column 3: Live student monitor & reports exporter */}
+          <section className="glass-panel">
+            <div className="panel-header">
+              <h2>📊 3. Live Diagnostics Dashboard</h2>
+            </div>
             <div className="panel-content">
-              {/* Classroom settings and connection */}
-              {!connected ? (
-                <div className="classroom-init-settings">
-                  <div className="settings-row" style={{ gap: "0.5rem", marginBottom: "1rem" }}>
-                    <div className="settings-group half-width">
-                      <label>Dialect (बोली)</label>
-                      <select 
-                        className="input-key select-custom" 
-                        value={activeDialect}
-                        onChange={(e) => setActiveDialect(e.target.value)}
-                      >
-                        <option value="awadhi">Awadhi (अवधी)</option>
-                        <option value="hindi">Hindi (हिंदी)</option>
-                        <option value="auto">Auto-Adapt (स्वचालित)</option>
-                      </select>
+              <div className="settings-group">
+                <label>Select Student to Monitor</label>
+                <select
+                  value={selectedStudentId}
+                  onChange={(e) => setSelectedStudentId(e.target.value)}
+                  className="input-key select-custom"
+                >
+                  <option value="">-- Select Active Student --</option>
+                  {students.map(s => (
+                    <option key={s.id} value={s.id}>{s.name} {s.assignedTutorId ? "🎯" : ""}</option>
+                  ))}
+                </select>
+              </div>
+
+              {activeSelectedStudent ? (
+                <div className="dashboard-content monitor-card">
+                  <div className="student-profile-header">
+                    <div>
+                      <h2>{activeSelectedStudent.name}</h2>
+                      <span className="tutor-assigned-tag">
+                        🎯 Tutor: {tutors.find(t => t.id === activeSelectedStudent.assignedTutorId)?.name || "Unassigned"}
+                      </span>
                     </div>
-                    <div className="settings-group half-width">
-                      <label>Pace (गति)</label>
-                      <select 
-                        className="input-key select-custom" 
-                        value={activePace}
-                        onChange={(e) => setActivePace(e.target.value)}
-                      >
-                        <option value="slow">Slow (धीमी)</option>
-                        <option value="normal">Normal (सामान्य)</option>
-                        <option value="fast">Fast (तेज़)</option>
-                      </select>
+                    <div className="quiz-score-circle">
+                      <div className="score-val">{activeSelectedStudent.quizScore || 0}%</div>
+                      <div className="score-lbl">Quiz Score</div>
                     </div>
                   </div>
-                  <button
-                    className="btn-connect"
-                    onClick={connectSession}
-                    disabled={connecting}
+
+                  {/* Progress bar */}
+                  <div className="dashboard-progress-section">
+                    {(() => {
+                      const tutorObj = tutors.find(t => t.id === activeSelectedStudent.assignedTutorId);
+                      const steps = tutorObj ? tutorObj.lessonPlan : [];
+                      const stepIdx = activeSelectedStudent.currentStepIndex || 0;
+                      const percent = steps.length > 0 ? Math.min(100, Math.round(((stepIdx + 1) / steps.length) * 100)) : 0;
+                      return (
+                        <>
+                          <div className="progress-labels">
+                            <span>Lesson Checklist</span>
+                            <span>Step {stepIdx + 1} of {steps.length}</span>
+                          </div>
+                          <div className="progress-track-bg">
+                            <div className="progress-fill" style={{ width: `${percent}%` }} />
+                          </div>
+                          <p className="active-step-hint">
+                            <strong>Active Step:</strong> {steps[stepIdx] || "Not Started"}
+                          </p>
+                        </>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Gaps */}
+                  <div className="diagnostics-card">
+                    <h3>⚠️ Diagnosed Learning Gaps</h3>
+                    {!activeSelectedStudent.gaps || activeSelectedStudent.gaps.length === 0 ? (
+                      <p className="no-data-text">कोई कमजोरी अभी रिपोर्ट नहीं की गई है।</p>
+                    ) : (
+                      <div className="badges-container">
+                        {activeSelectedStudent.gaps.map((gap, i) => (
+                          <span key={i} className="badge gap-badge">🔍 {gap}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Strengths */}
+                  <div className="diagnostics-card">
+                    <h3>✅ Mastered Strengths</h3>
+                    {!activeSelectedStudent.strengths || activeSelectedStudent.strengths.length === 0 ? (
+                      <p className="no-data-text">कोई ताकत अभी रिपोर्ट नहीं की गई है।</p>
+                    ) : (
+                      <div className="badges-container">
+                        {activeSelectedStudent.strengths.map((str, i) => (
+                          <span key={i} className="badge strength-badge">⚡ {str}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Summary */}
+                  <div className="diagnostics-card flex-grow-card">
+                    <h3>📝 Summary Diagnostics Report</h3>
+                    <div className="summary-text-box">
+                      {activeSelectedStudent.diagnostics || "रिपोर्ट अभी खाली है।"}
+                    </div>
+                  </div>
+
+                  <button 
+                    className="btn-connect" 
+                    onClick={() => exportCoordinatorStudentReport(activeSelectedStudent)}
                   >
-                    {connecting ? "ट्यूटर कनेक्ट हो रहा है..." : "ट्यूटर से बातचीत शुरू करें (Connect)"}
+                    📥 Save & Export Diagnostic Report
                   </button>
                 </div>
               ) : (
-                <div className="connected-classroom-header">
-                  <div className="student-badge-info">
-                    👤 छात्र: <strong>{studentName}</strong> | 🗣️ {activeDialect === "awadhi" ? "अवधी" : activeDialect === "hindi" ? "हिंदी" : "अनुकूलनीय"}
-                  </div>
-                  <button
-                    className="btn-connect disconnect"
-                    onClick={disconnectSession}
-                    style={{ padding: "0.5rem" }}
-                  >
-                    सत्र समाप्त करें (Disconnect)
-                  </button>
+                <div className="dashboard-empty-state">
+                  <span style={{ fontSize: "3rem" }}>📊</span>
+                  <p>चयनित छात्र का लाइव स्कोर, पाठ योजना प्रगति, कमजोरी और ताकतों का रिपोर्ट देखने के लिए छात्र का चयन करें।</p>
                 </div>
               )}
+            </div>
+          </section>
+        </main>
+      </div>
+    );
+  }
 
-              {/* Dynamic Lesson Plan Checklist for Student */}
-              <div className="student-checklist-container">
-                <h3>📖 Lesson Roadmap Checklist</h3>
-                <div className="roadmap-checklist">
-                  {lessonPlan.map((step, idx) => {
-                    let itemClass = "upcoming";
-                    let icon = "⏱️";
-                    if (idx === studentCurrentStep) {
-                      itemClass = "active";
-                      icon = "⚡";
-                    } else if (idx < studentCurrentStep) {
-                      itemClass = "completed";
-                      icon = "✅";
-                    }
+  // 3. Student Portal (/student)
+  if (route === "/student") {
+    // 3A. Selector view: If studentId is not specified
+    if (!activeStudentId) {
+      return (
+        <div className="app-container" style={{ justifyContent: "center", alignItems: "center" }}>
+          <div className="student-select-container glass-panel glow">
+            <div className="panel-header" style={{ justifyContent: "center" }}>
+              <h2>🎓 Hazratganj Student Classroom Gate</h2>
+            </div>
+            <div className="panel-content select-panel-content">
+              <p>कक्षा में प्रवेश करने के लिए अपना नाम चुनें:</p>
+              {students.length === 0 ? (
+                <div className="no-data-text" style={{ padding: "2rem" }}>
+                  कोई छात्र अभी तक पंजीकृत नहीं है। कृपया पहले कोऑर्डिनेटर से संपर्क करें।
+                </div>
+              ) : (
+                <div className="student-select-grid">
+                  {students.map(s => {
+                    const assignedTutorObj = tutors.find(t => t.id === s.assignedTutorId);
                     return (
-                      <div key={idx} className={`checklist-item ${itemClass}`}>
-                        <span className="checklist-icon">{icon}</span>
-                        <span className="checklist-text">{step}</span>
+                      <div 
+                        key={s.id} 
+                        className="student-select-card"
+                        onClick={() => navigateTo(`/student?studentId=${s.id}`)}
+                      >
+                        <span className="card-avatar">👤</span>
+                        <h3>{s.name}</h3>
+                        <p className="card-meta">
+                          {assignedTutorObj ? `📖 Assigned: ${assignedTutorObj.name}` : "⏱️ Waiting for Tutor Assignment"}
+                        </p>
                       </div>
                     );
                   })}
                 </div>
+              )}
+              <button className="btn-back-home" onClick={() => navigateTo("/")} style={{ marginTop: "1.5rem" }}>
+                🔙 Hub Landing Page
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // 3B. Classroom view: If studentId is specified
+    if (!activeStudent) {
+      return (
+        <div className="app-container" style={{ justifyContent: "center", alignItems: "center" }}>
+          <div className="glass-panel" style={{ width: "400px", padding: "2rem", textAlign: "center" }}>
+            <span style={{ fontSize: "3rem" }}>⏱️</span>
+            <h3>लोड हो रहा है...</h3>
+            <p>विद्यार्थी रिकॉर्ड प्राप्त किया जा रहा है।</p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="app-container">
+        <header className="app-header">
+          <div>
+            <h1 className="clickable-title" onClick={() => navigateTo("/")}>🎓 Vernacular Student Classroom</h1>
+            <p>अवधी / हिंदी ट्यूटर हब — संवादात्मक भौतिकी पाठशाला</p>
+          </div>
+          
+          <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+            <button className="btn-back-home" onClick={() => navigateTo("/student")}>
+              🔙 Switch Student
+            </button>
+            <div className="status-badge">
+              <div className={`status-dot ${connected ? "connected" : connecting ? "connecting" : ""}`} />
+              {connected ? "लाइव कक्षा" : connecting ? "कनेक्ट हो रहा है..." : "क्लास बंद है"}
+            </div>
+          </div>
+        </header>
+
+        {error && <div className="alert-error">⚠️ {error}</div>}
+
+        <main className="main-grid">
+          {/* Left Column: Student Voice Panel */}
+          <section className="glass-panel glow">
+            <div className="panel-header">
+              <h2>🗣️ Tutor: {assignedTutor ? assignedTutor.name : "ट्यूटर असाइन नहीं है"}</h2>
+            </div>
+
+            <div className="panel-content">
+              {/* Settings / Connection Controls */}
+              {!connected ? (
+                <div className="classroom-init-settings">
+                  <div className="student-badge-info" style={{ marginBottom: "0.5rem" }}>
+                    👤 विद्यार्थी का नाम: <strong>{activeStudent.name}</strong>
+                  </div>
+                  {assignedTutor ? (
+                    <>
+                      <div className="tutor-assigned-preview">
+                        <p><strong>assigned tutor settings:</strong></p>
+                        <ul>
+                          <li>भाषा: {assignedTutor.dialect === "awadhi" ? "अवधी (Awadhi)" : assignedTutor.dialect === "hindi" ? "हिंदी" : "Adapt"}</li>
+                          <li>गति: {assignedTutor.pace}</li>
+                        </ul>
+                      </div>
+                      <div className="settings-row" style={{ gap: "0.5rem", marginBottom: "1rem" }}>
+                        <div className="settings-group half-width">
+                          <label>Choose Dialect (बोली)</label>
+                          <select className="input-key select-custom" value={activeDialect} onChange={(e) => setActiveDialect(e.target.value)}>
+                            <option value="awadhi">Awadhi (अवधी)</option>
+                            <option value="hindi">Hindi (हिंदी)</option>
+                            <option value="auto">Auto-Adapt (स्वचालित)</option>
+                          </select>
+                        </div>
+                        <div className="settings-group half-width">
+                          <label>Choose Pace (गति)</label>
+                          <select className="input-key select-custom" value={activePace} onChange={(e) => setActivePace(e.target.value)}>
+                            <option value="slow">Slow (धीमी)</option>
+                            <option value="normal">Normal (सामान्य)</option>
+                            <option value="fast">Fast (तेज़)</option>
+                          </select>
+                        </div>
+                      </div>
+                      <button className="btn-connect" onClick={connectSession} disabled={connecting}>
+                        {connecting ? "कनेक्ट हो रहा है..." : "ट्यूटर से जुड़ें (Start Classroom)"}
+                      </button>
+                    </>
+                  ) : (
+                    <div className="alert-error" style={{ background: "rgba(239, 68, 68, 0.05)", border: "1px solid rgba(239, 68, 68, 0.15)", color: "#ef4444" }}>
+                      ⚠️ ट्यूटर असाइन नहीं है। कृपया कोऑर्डिनेटर हब में जाकर इस विद्यार्थी को ट्यूटर असाइन करें।
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="connected-classroom-header">
+                  <div className="student-badge-info">
+                    👤 <strong>{activeStudent.name}</strong> | 🗣️ {activeDialect === "awadhi" ? "अवधी" : activeDialect === "hindi" ? "हिंदी" : "Auto-adapt"}
+                  </div>
+                  <button className="btn-connect disconnect" onClick={disconnectSession} style={{ padding: "0.4rem 0.8rem", fontSize: "0.8rem" }}>
+                    डिस्कनेक्ट (Close Session)
+                  </button>
+                </div>
+              )}
+
+              {/* Checklist Roadmap */}
+              <div className="student-checklist-container">
+                <h3>📖 Lesson Roadmap Checklist</h3>
+                <div className="roadmap-checklist">
+                  {activePlanSteps.length === 0 ? (
+                    <p className="no-data-text">कोई पाठ चरण असाइन नहीं किया गया है।</p>
+                  ) : (
+                    activePlanSteps.map((step, idx) => {
+                      let itemClass = "upcoming";
+                      let icon = "⏱️";
+                      if (idx === studentCurrentStep) {
+                        itemClass = "active";
+                        icon = "⚡";
+                      } else if (idx < studentCurrentStep) {
+                        itemClass = "completed";
+                        icon = "✅";
+                      }
+                      return (
+                        <div key={idx} className={`checklist-item ${itemClass}`}>
+                          <span className="checklist-icon">{icon}</span>
+                          <span className="checklist-text">{step}</span>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
 
                 {connected && (
                   <div className="quick-actions-bar">
-                    <button 
-                      type="button" 
-                      className="btn-quick-action proceed"
-                      onClick={triggerNextStep}
-                    >
+                    <button type="button" className="btn-quick-action proceed" onClick={triggerNextStep}>
                       आगे बढ़ें (Next Step) 👉
                     </button>
-                    <button 
-                      type="button" 
-                      className="btn-quick-action quiz"
-                      onClick={triggerQuiz}
-                    >
+                    <button type="button" className="btn-quick-action quiz" onClick={triggerQuiz}>
                       📝 Take Quiz
                     </button>
                   </div>
                 )}
               </div>
 
-              {/* Avatar Visualization */}
-              <div className="avatar-container" style={{ padding: "0.5rem 0" }}>
+              {/* Avatar Wave animation */}
+              <div className="avatar-container">
                 <div className={`avatar-outer ${connected ? "active" : ""}`}>
                   <div className="visualizer-rings" />
-                  <div
-                    className={`avatar-core ${
-                      isRecording
-                        ? "recording"
-                        : connected
-                        ? "speaking"
-                        : ""
-                    }`}
-                  >
+                  <div className={`avatar-core ${isRecording ? "recording" : connected ? "speaking" : ""}`}>
                     <div className="avatar-icon-glow" />
                     <span style={{ fontSize: "2rem" }}>🪐</span>
                   </div>
                 </div>
               </div>
 
-              {/* Subtitles/Transcript */}
+              {/* Transcript subtitles */}
               <div className="transcript-panel">
-                <h3>कक्षा संवाद (Transcript)</h3>
+                <h3>संवाद विवरण (Transcript)</h3>
                 <div className="transcript-area">
                   {transcript.map((msg, i) => (
                     <div key={i} className={`msg ${msg.sender}`}>
@@ -1106,13 +1527,12 @@ ${studentDiagnostics}
                 </div>
               </div>
 
-              {/* Mic Toggle Button */}
+              {/* Mic Controls */}
               <div className="mic-controls">
                 <button
                   className={`btn-mic ${isRecording ? "recording" : ""}`}
                   onClick={toggleRecording}
                   disabled={!connected}
-                  title={isRecording ? "सुनना बंद करें" : "ट्यूटर से बात करें"}
                 >
                   {isRecording ? (
                     <svg viewBox="0 0 24 24" fill="currentColor">
@@ -1127,13 +1547,13 @@ ${studentDiagnostics}
                 </button>
               </div>
 
-              {/* Optional Text Input Form */}
+              {/* Text Input fallback */}
               {connected && (
                 <form onSubmit={handleSendText} style={{ display: "flex", gap: "0.5rem" }}>
                   <input
                     type="text"
                     className="input-key"
-                    placeholder="ट्यूटर को संदेश भेजें (जैसे: 'Newton's law visual code change')..."
+                    placeholder="अपना संदेह यहाँ टाइप करें..."
                     value={textInput}
                     onChange={(e) => setTextInput(e.target.value)}
                   />
@@ -1145,7 +1565,7 @@ ${studentDiagnostics}
             </div>
           </section>
 
-          {/* Right Column: Blackboard Canvas */}
+          {/* Right Column: Blackboard visuals */}
           <section className="glass-panel">
             <div className="panel-header" style={{ background: "#05050e" }}>
               <h2>📋 Blackboard: {visualCode ? visualCode.title : "इंटरेक्टिव बोर्ड"}</h2>
@@ -1167,69 +1587,68 @@ ${studentDiagnostics}
             )}
           </section>
         </main>
-      )}
 
-      {/* Persistent Collapsible Debug logs console */}
-      <div className="debug-toggle-container">
-        <button
-          className="btn-debug-toggle"
-          onClick={() => setShowDebug(!showDebug)}
-        >
-          {showDebug ? "🛠️ Hide Debug Console" : "🛠️ Show Debug Console"}
-        </button>
-      </div>
+        <div className="debug-toggle-container">
+          <button className="btn-debug-toggle" onClick={() => setShowDebug(!showDebug)}>
+            {showDebug ? "🛠️ Hide Debug Console" : "🛠️ Show Debug Console"}
+          </button>
+        </div>
 
-      {showDebug && (
-        <section className="glass-panel debug-panel">
-          <div className="panel-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-              <h2>🛠️ Gemini Live API Debug Console</h2>
-              {saveStatus && (
-                <span className="debug-badge received" style={{ background: "rgba(34, 197, 94, 0.2)", color: "#4ade80", fontSize: "0.75rem", textTransform: "none", marginRight: 0 }}>
-                  {saveStatus}
-                </span>
+        {showDebug && (
+          <section className="glass-panel debug-panel">
+            <div className="panel-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                <h2>🛠️ Gemini Live API Debug Console</h2>
+                {saveStatus && (
+                  <span className="debug-badge received" style={{ background: "rgba(34, 197, 94, 0.2)", color: "#4ade80", fontSize: "0.75rem", textTransform: "none", marginRight: 0 }}>
+                    {saveStatus}
+                  </span>
+                )}
+              </div>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button className="btn-clear-debug" style={{ borderColor: "var(--accent-secondary)", color: "#a5f3fc" }} onClick={() => saveLogsToFile(debugLogs)} disabled={debugLogs.length === 0}>
+                  💾 Save Logs
+                </button>
+                <button className="btn-clear-debug" style={{ borderColor: "var(--accent-primary)", color: "#93c5fd" }} onClick={downloadLogs} disabled={debugLogs.length === 0}>
+                  📥 Download JSON
+                </button>
+                <button className="btn-clear-debug" onClick={clearLogs}>
+                  🧹 Clear Logs
+                </button>
+              </div>
+            </div>
+            <div className="debug-log-list">
+              {debugLogs.length === 0 ? (
+                <div className="debug-empty">No API transactions logged yet. Connect to start session.</div>
+              ) : (
+                debugLogs.map((log) => (
+                  <div key={log.id} className={`debug-log-item ${log.direction}`}>
+                    <div style={{ display: "flex", alignItems: "center", marginBottom: "0.25rem" }}>
+                       <span className="debug-time">{log.time}</span>
+                      <span className={`debug-badge ${log.direction}`}>{log.direction}</span>
+                      <strong style={{ fontSize: "0.85rem", color: "var(--text-primary)" }}>{log.type}</strong>
+                    </div>
+                    <pre className="debug-msg">{log.data}</pre>
+                  </div>
+                ))
               )}
             </div>
-            <div style={{ display: "flex", gap: "0.5rem" }}>
-              <button
-                className="btn-clear-debug"
-                style={{ borderColor: "var(--accent-secondary)", color: "#a5f3fc" }}
-                onClick={() => saveLogsToFile(debugLogs)}
-                disabled={debugLogs.length === 0}
-              >
-                💾 Save Logs
-              </button>
-              <button
-                className="btn-clear-debug"
-                style={{ borderColor: "var(--accent-primary)", color: "#93c5fd" }}
-                onClick={downloadLogs}
-                disabled={debugLogs.length === 0}
-              >
-                📥 Download JSON
-              </button>
-              <button className="btn-clear-debug" onClick={clearLogs}>
-                🧹 Clear Logs
-              </button>
-            </div>
-          </div>
-          <div className="debug-log-list">
-            {debugLogs.length === 0 ? (
-              <div className="debug-empty">No API transactions logged yet. Connect to start session.</div>
-            ) : (
-              debugLogs.map((log) => (
-                <div key={log.id} className={`debug-log-item ${log.direction}`}>
-                  <div style={{ display: "flex", alignItems: "center", marginBottom: "0.25rem" }}>
-                     <span className="debug-time">{log.time}</span>
-                    <span className={`debug-badge ${log.direction}`}>{log.direction}</span>
-                    <strong style={{ fontSize: "0.85rem", color: "var(--text-primary)" }}>{log.type}</strong>
-                  </div>
-                  <pre className="debug-msg">{log.data}</pre>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
-      )}
+          </section>
+        )}
+      </div>
+    );
+  }
+
+  // Fallback / Routing Error: Render simple error gateway
+  return (
+    <div className="app-container" style={{ justifyContent: "center", alignItems: "center" }}>
+      <div className="glass-panel" style={{ width: "400px", padding: "2rem", textAlign: "center" }}>
+        <h2>⚠️ Page Not Found</h2>
+        <p>The path <code>{route}</code> is unrecognized.</p>
+        <button className="btn-connect" onClick={() => navigateTo("/")}>
+          Return to Gateway Hub
+        </button>
+      </div>
     </div>
   );
 }

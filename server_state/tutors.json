@@ -1,0 +1,15 @@
+[
+  {
+    "id": "tutor_1779463635187",
+    "name": "Bhoutik AI",
+    "instructions": "teach and asses a physics lesson plan for a 5th standard UP board circulum",
+    "lessonPlan": [
+      "विराम और जड़त्व (Inertia) के नियम का परिचय (अवधी में)",
+      "बल (Force) और त्वरण (Acceleration) का परिचय चित्र के साथ",
+      "घर्षण (Friction) गुणांक का एनीमेशन और प्रभाव",
+      "यूपी बोर्ड परीक्षा के प्रश्नों पर आधारित एक छोटा क्विज़"
+    ],
+    "dialect": "awadhi",
+    "pace": "normal"
+  }
+]
