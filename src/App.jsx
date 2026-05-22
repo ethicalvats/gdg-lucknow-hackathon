@@ -78,6 +78,7 @@ export default function App() {
     },
   ]);
   const [visualCode, setVisualCode] = useState(null);
+  const [activeQuiz, setActiveQuiz] = useState(null);
   const [debugLogs, setDebugLogs] = useState([]);
   const [showDebug, setShowDebug] = useState(false);
 
@@ -390,6 +391,85 @@ export default function App() {
     }
   };
 
+  const handleSelectQuizOption = async (optionIndex) => {
+    if (!activeQuiz || activeQuiz.submitted) return;
+    
+    const isCorrect = optionIndex === activeQuiz.correctOptionIndex;
+    
+    const updatedQuiz = {
+      ...activeQuiz,
+      selectedOptionIndex: optionIndex,
+      submitted: true
+    };
+    setActiveQuiz(updatedQuiz);
+
+    setTranscript(prev => [
+      ...prev,
+      {
+        sender: "student",
+        text: `[Selected Option: ${activeQuiz.options[optionIndex]} - ${isCorrect ? "Correct (सही)" : "Incorrect (गलत)"}]`
+      }
+    ]);
+
+    let newScore = studentQuizScore;
+    if (isCorrect) {
+      newScore = Math.min(100, studentQuizScore + 25);
+    } else {
+      newScore = Math.max(0, studentQuizScore - 10);
+    }
+    setStudentQuizScore(newScore);
+
+    let updatedStrengths = [...studentStrengths];
+    let updatedGaps = [...studentGaps];
+    const conceptTag = activeQuiz.question.substring(0, 35) + "...";
+    
+    if (isCorrect) {
+      if (!updatedStrengths.includes(conceptTag)) {
+        updatedStrengths.push(conceptTag);
+      }
+      updatedGaps = updatedGaps.filter(g => g !== conceptTag);
+    } else {
+      if (!updatedGaps.includes(conceptTag)) {
+        updatedGaps.push(conceptTag);
+      }
+    }
+
+    setStudentStrengths(updatedStrengths);
+    setStudentGaps(updatedGaps);
+
+    updateStudentDiagnosticsOnServer({
+      gaps: updatedGaps,
+      strengths: updatedStrengths,
+      quizScore: newScore,
+      diagnostics: `प्रश्नोत्तरी में छात्र का प्रदर्शन। अंतिम प्रश्न: '${activeQuiz.question.substring(0, 40)}...'. परिणाम: ${isCorrect ? "सही उत्तर" : "गलत उत्तर"}`,
+      currentStepIndex: studentCurrentStep
+    });
+
+    const responseMsg = {
+      toolResponse: {
+        functionResponses: [
+          {
+            name: "render_interactive_quiz",
+            id: activeQuiz.wsCallId,
+            response: {
+              output: {
+                status: isCorrect ? "correct" : "incorrect",
+                studentSelectedOption: activeQuiz.options[optionIndex],
+                correctOption: activeQuiz.options[activeQuiz.correctOptionIndex],
+                explanation: activeQuiz.explanation
+              }
+            }
+          }
+        ]
+      }
+    };
+
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify(responseMsg));
+      logDebug("sent", "TOOL_RESPONSE", responseMsg);
+    }
+  };
+
   const saveDiagnosticReport = async () => {
     if (!activeStudent) return;
     const timestamp = new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
@@ -598,6 +678,7 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
           `${assignedTutor.instructions || "No additional custom instructions."}\n\n` +
           `INTERACTIVE VISUAL BLACKBOARD & PROFILE DIAGNOSTICS:\n` +
           `- Your explanations of physics concepts must be accompanied by visuals. Call the tool 'explain_with_visuals' to draw interactive Canvas/SVG animations on the Blackboard.\n` +
+          `- When evaluating or quizzing the student, you MUST call the tool 'render_interactive_quiz' to present a multiple-choice question on the student's screen. Do not just speak the quiz in audio. Provide the question, 4 options, the correct option index, and a short explanation. The system will pause speaking and wait for the student to select and submit their choice. Once the student submits, you will receive the correctness back as a tool response. Speak the explanation and guide them accordingly.\n` +
           `- You MUST call the tool 'update_learning_profile' regularly to update the student's profile progress (identified weaknesses/gaps, mastered strengths, quiz scores out of 100, a summary, and the index of the active lesson step, starting at 0).\n` +
           `- Call 'update_learning_profile' when they struggle with a question (adds to gaps), master a concept (adds to strengths), answer a quiz question (updates quiz score), or move to a new lesson step.\n` +
           `- Keep your spoken explanations relatively short and conversational so the student doesn't have to wait, and let the blackboard do the heavy lifting.`;
@@ -687,6 +768,35 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
                       },
                       required: ["gaps", "strengths", "quizScore", "diagnostics", "currentStepIndex"]
                     }
+                  },
+                  {
+                    name: "render_interactive_quiz",
+                    description: "Displays an interactive multiple-choice physics quiz question on the student's screen. The voice tutor will pause and wait for the student to select and submit their answer.",
+                    parameters: {
+                      type: "OBJECT",
+                      properties: {
+                        question: {
+                          type: "STRING",
+                          description: "The quiz question text, written in Hindi/Awadhi."
+                        },
+                        options: {
+                          type: "ARRAY",
+                          items: {
+                            type: "STRING"
+                          },
+                          description: "List of exactly 4 multiple-choice options."
+                        },
+                        correctOptionIndex: {
+                          type: "INTEGER",
+                          description: "The 0-based index of the correct option (0, 1, 2, or 3)."
+                        },
+                        explanation: {
+                          type: "STRING",
+                          description: "A short explanation of the correct answer, in Hindi/Awadhi."
+                        }
+                      },
+                      required: ["question", "options", "correctOptionIndex", "explanation"]
+                    }
                   }
                 ],
               },
@@ -768,6 +878,7 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
 
     setConnected(false);
     setConnecting(false);
+    setActiveQuiz(null);
   };
 
   const handleServerMessage = (data) => {
@@ -856,6 +967,20 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
               ws.current.send(JSON.stringify(responseMsg));
               logDebug("sent", "TOOL_RESPONSE", responseMsg);
             }
+          } else if (call.name === "render_interactive_quiz") {
+            const args = call.args;
+            console.log("Interactive quiz tool call received:", args);
+            setActiveQuiz({
+              question: args.question,
+              options: Array.isArray(args.options) ? args.options : [],
+              correctOptionIndex: typeof args.correctOptionIndex === "number" ? args.correctOptionIndex : 0,
+              explanation: args.explanation || "",
+              selectedOptionIndex: null,
+              submitted: false,
+              wsCallId: call.id
+            });
+            // We do NOT send a toolResponse immediately.
+            // The client will render the quiz on screen and wait for user's click.
           }
         }
       }
@@ -1511,6 +1636,15 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
                     <span style={{ fontSize: "2rem" }}>🪐</span>
                   </div>
                 </div>
+                {connected && (
+                  <div className="speech-waves">
+                    <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
+                    <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
+                    <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
+                    <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
+                    <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
+                  </div>
+                )}
               </div>
 
               {/* Transcript subtitles */}
@@ -1568,10 +1702,77 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
           {/* Right Column: Blackboard visuals */}
           <section className="glass-panel">
             <div className="panel-header" style={{ background: "#05050e" }}>
-              <h2>📋 Blackboard: {visualCode ? visualCode.title : "इंटरेक्टिव बोर्ड"}</h2>
+              <h2>
+                {activeQuiz 
+                  ? "✍️ Interactive Quiz (प्रश्नोत्तरी)" 
+                  : `📋 Blackboard: ${visualCode ? visualCode.title : "इंटरेक्टिव बोर्ड"}`
+                }
+              </h2>
             </div>
             
-            {visualCode ? (
+            {activeQuiz ? (
+              <div className="quiz-card-box">
+                <div className="quiz-question-container">
+                  <span className="quiz-icon">❓</span>
+                  <p className="quiz-question-text">{activeQuiz.question}</p>
+                </div>
+                
+                <div className="quiz-options-list">
+                  {activeQuiz.options.map((option, idx) => {
+                    const isSelected = activeQuiz.selectedOptionIndex === idx;
+                    const isCorrect = idx === activeQuiz.correctOptionIndex;
+                    let btnClass = "quiz-option-btn";
+                    
+                    if (activeQuiz.submitted) {
+                      if (isCorrect) {
+                        btnClass += " correct-option";
+                      } else if (isSelected) {
+                        btnClass += " incorrect-option";
+                      } else {
+                        btnClass += " disabled-option";
+                      }
+                    } else if (isSelected) {
+                      btnClass += " selected-option";
+                    }
+                    
+                    return (
+                      <button
+                        key={idx}
+                        className={btnClass}
+                        disabled={activeQuiz.submitted}
+                        onClick={() => handleSelectQuizOption(idx)}
+                      >
+                        <span className="option-letter">{String.fromCharCode(65 + idx)}.</span>
+                        <span className="option-text">{option}</span>
+                        {activeQuiz.submitted && isCorrect && <span className="feedback-icon">✅</span>}
+                        {activeQuiz.submitted && isSelected && !isCorrect && <span className="feedback-icon">❌</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                {activeQuiz.submitted && (
+                  <div className="quiz-feedback-box animate-fade-in">
+                    <p className={`quiz-feedback-status ${activeQuiz.selectedOptionIndex === activeQuiz.correctOptionIndex ? "status-success" : "status-error"}`}>
+                      {activeQuiz.selectedOptionIndex === activeQuiz.correctOptionIndex 
+                        ? "🎉 बिल्कुल सही उत्तर! (Correct)" 
+                        : "⚠️ गलत उत्तर! (Incorrect)"
+                      }
+                    </p>
+                    <p className="quiz-explanation-text">
+                      <strong>स्पष्टीकरण:</strong> {activeQuiz.explanation}
+                    </p>
+                    <button 
+                      className="btn-connect" 
+                      style={{ marginTop: "1rem", alignSelf: "flex-end" }}
+                      onClick={() => setActiveQuiz(null)}
+                    >
+                      🔙 Back to Blackboard
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : visualCode ? (
               <VisualBoard visualCode={visualCode} />
             ) : (
               <div className="blackboard-empty">
