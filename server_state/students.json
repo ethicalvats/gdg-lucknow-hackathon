@@ -3,14 +3,10 @@
     "id": "student_1779463652745",
     "name": "Vikas Yadav",
     "assignedTutorId": "tutor_1779463635187",
-    "gaps": [
-      "Newton's 2nd law definition"
-    ],
-    "strengths": [
-      "Friction effects visual understanding"
-    ],
-    "quizScore": 50,
-    "diagnostics": "Student answered quiz question on friction correctly. Quiz finished. Final quiz score 50%. Mastery shown in basic friction concepts, mixed understanding of Newton's Laws.",
-    "currentStepIndex": 3
+    "gaps": [],
+    "strengths": [],
+    "quizScore": 0,
+    "diagnostics": "",
+    "currentStepIndex": 0
   }
 ]

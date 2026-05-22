@@ -349,6 +349,43 @@ export default function App() {
     }
   };
 
+  const handleResetStudentProgress = async (studentId) => {
+    if (!studentId) return;
+    try {
+      const response = await fetch("/api/update-student-diagnostics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId,
+          gaps: [],
+          strengths: [],
+          quizScore: 0,
+          diagnostics: "प्रगति और पाठ योजना रीसेट की गई।",
+          currentStepIndex: 0,
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setSaveStatus("प्रगति रीसेट कर दी गई है!");
+        setTimeout(() => setSaveStatus(""), 3000);
+        
+        if (activeStudentId === studentId) {
+          setStudentCurrentStep(0);
+          setStudentGaps([]);
+          setStudentStrengths([]);
+          setStudentQuizScore(0);
+          setStudentDiagnostics("प्रगति और पाठ योजना रीसेट की गई।");
+          setActiveQuiz(null);
+          fetchStudentDetail(studentId);
+        }
+        
+        fetchState();
+      }
+    } catch (err) {
+      console.error("Failed to reset student progress:", err);
+    }
+  };
+
   const restoreDefaultLessonPlan = () => {
     setLessonPlan([
       "विराम और जड़त्व (Inertia) के नियम का परिचय (अवधी में)",
@@ -1433,6 +1470,13 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
                   >
                     📥 Save & Export Diagnostic Report
                   </button>
+                  <button 
+                    className="btn-connect disconnect" 
+                    style={{ marginTop: "0.5rem" }}
+                    onClick={() => handleResetStudentProgress(activeSelectedStudent.id)}
+                  >
+                    🔄 Reset Progress & Lesson
+                  </button>
                 </div>
               ) : (
                 <div className="dashboard-empty-state">
@@ -1569,6 +1613,14 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
                       </div>
                       <button className="btn-connect" onClick={connectSession} disabled={connecting}>
                         {connecting ? "कनेक्ट हो रहा है..." : "ट्यूटर से जुड़ें (Start Classroom)"}
+                      </button>
+                      <button 
+                        className="btn-connect disconnect" 
+                        style={{ marginTop: "0.5rem", width: "100%" }}
+                        onClick={() => handleResetStudentProgress(activeStudentId)}
+                        disabled={connecting}
+                      >
+                        🔄 Reset Progress & Lesson (रीसेट प्रगति)
                       </button>
                     </>
                   ) : (
