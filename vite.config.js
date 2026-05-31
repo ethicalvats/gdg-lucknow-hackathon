@@ -159,12 +159,68 @@ export default defineConfig({
               const studentIdx = students.findIndex(s => s.id === studentId);
               if (studentIdx > -1) {
                 students[studentIdx].assignedTutorId = tutorId;
+                
+                if (tutorId) {
+                  const tutors = readTutors();
+                  const tutor = tutors.find(t => t.id === tutorId);
+                  if (tutor) {
+                    students[studentIdx].lessonPlan = tutor.lessonPlan || [];
+                    students[studentIdx].subject = tutor.subject || "Physics";
+                    students[studentIdx].board = tutor.board || "UP Board";
+                    students[studentIdx].dialect = tutor.dialect || "awadhi";
+                    students[studentIdx].pace = tutor.pace || "normal";
+                  }
+                } else {
+                  students[studentIdx].lessonPlan = [];
+                }
+                
                 writeStudents(students);
                 sendJSON(res, { success: true });
               } else {
-                sendJSON(res, { success: false, error: 'Student not found' }, 440);
+                sendJSON(res, { success: false, error: 'Student not found' }, 404);
               }
             } 
+            else if (pathname === '/api/students/coordinator-instruction' && req.method === 'POST') {
+              const body = await readBody(req);
+              const { studentId, instruction } = JSON.parse(body);
+              const students = readStudents();
+              const studentIdx = students.findIndex(s => s.id === studentId);
+              if (studentIdx > -1) {
+                students[studentIdx].coordinatorInstruction = instruction;
+                writeStudents(students);
+                sendJSON(res, { success: true });
+              } else {
+                sendJSON(res, { success: false, error: 'Student not found' }, 404);
+              }
+            }
+            else if (pathname === '/api/students/clear-instruction' && req.method === 'POST') {
+              const body = await readBody(req);
+              const { studentId } = JSON.parse(body);
+              const students = readStudents();
+              const studentIdx = students.findIndex(s => s.id === studentId);
+              if (studentIdx > -1) {
+                students[studentIdx].coordinatorInstruction = "";
+                writeStudents(students);
+                sendJSON(res, { success: true });
+              } else {
+                sendJSON(res, { success: false, error: 'Student not found' }, 404);
+              }
+            }
+            else if (pathname === '/api/students/update-lesson-plan' && req.method === 'POST') {
+              const body = await readBody(req);
+              const { studentId, lessonPlan, dialect, pace } = JSON.parse(body);
+              const students = readStudents();
+              const studentIdx = students.findIndex(s => s.id === studentId);
+              if (studentIdx > -1) {
+                if (Array.isArray(lessonPlan)) students[studentIdx].lessonPlan = lessonPlan;
+                if (typeof dialect === 'string') students[studentIdx].dialect = dialect;
+                if (typeof pace === 'string') students[studentIdx].pace = pace;
+                writeStudents(students);
+                sendJSON(res, { success: true });
+              } else {
+                sendJSON(res, { success: false, error: 'Student not found' }, 404);
+              }
+            }
             else if (pathname === '/api/update-student-diagnostics' && req.method === 'POST') {
               const body = await readBody(req);
               const { studentId, gaps, strengths, quizScore, diagnostics, currentStepIndex } = JSON.parse(body);
@@ -237,4 +293,14 @@ export default defineConfig({
       }
     }
   ],
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      include: ['src/**'],
+      exclude: ['src/main.jsx', 'src/assets/**', 'src/**/*.css', 'src/App.jsx'],
+    },
+  },
 })

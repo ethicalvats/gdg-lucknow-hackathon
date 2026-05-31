@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import "./App.css";
 import VisualBoard from "./components/VisualBoard";
 import { AudioRecorder } from "./utils/AudioRecorder";
@@ -26,12 +26,62 @@ const sanitizeForLog = (obj) => {
   return obj;
 };
 
+const defaultLessonPlans = {
+  Physics: [
+    "विराम और जड़त्व (Inertia) के नियम का परिचय",
+    "बल (Force) और त्वरण (Acceleration) का परिचय चित्र के साथ",
+    "घर्षण (Friction) गुणांक का एनीमेशन और प्रभाव",
+    "यूपी बोर्ड परीक्षा के प्रश्नों पर आधारित एक छोटा क्विज़"
+  ],
+  Chemistry: [
+    "परमाणु संरचना (Atomic Structure) और इलेक्ट्रॉन व्यवस्था का परिचय",
+    "रासायनिक बंध (Chemical Bonding) का सिद्धांत और चित्र",
+    "अम्ल, क्षार और लवण (Acids, Bases & Salts) का महत्व",
+    "यूपी बोर्ड परीक्षा के प्रश्नों पर आधारित एक छोटा क्विज़"
+  ],
+  Mathematics: [
+    "त्रिकोणमिति (Trigonometry) के मूल सिद्धांत और सूत्र",
+    "द्विघात समीकरण (Quadratic Equations) का ज्यामितीय चित्रण",
+    "अवकलन (Calculus/Differentiation) का महत्व",
+    "यूपी बोर्ड परीक्षा के प्रश्नों पर आधारित एक छोटा क्विज़"
+  ],
+  Biology: [
+    "कोशिका संरचना (Cell Structure) और उसके अंग",
+    "पाचन तंत्र (Digestive System) की कार्यविधि चित्र के साथ",
+    "आनुवंशिकी (Genetics) और मेंडल के नियम",
+    "यूपी बोर्ड परीक्षा के प्रश्नों पर आधारित एक छोटा क्विज़"
+  ],
+  English: [
+    "Tenses (काल) के नियम और उदाहरण",
+    "Active and Passive Voice का प्रयोग",
+    "Direct and Indirect Speech के बदलाव",
+    "यूपी बोर्ड परीक्षा के प्रश्नों पर आधारित एक छोटा अभ्यास"
+  ],
+  Generic: [
+    "विषय के मूल सिद्धांतों का परिचय",
+    "चित्रों और उदाहरणों के साथ विस्तृत व्याख्या",
+    "विषय के अनुप्रयोग और महत्व",
+    "परीक्षा के प्रश्नों पर आधारित एक छोटा क्विज़"
+  ]
+};
+
 export default function App() {
   // Routing State (Simple SPA Pathname and Query parsing)
   const [route, setRoute] = useState(window.location.pathname);
   const [searchQuery, setSearchQuery] = useState(window.location.search);
   const [saveStatus, setSaveStatus] = useState("");
   const [error, setError] = useState(null);
+
+  function logDebug(direction, type, data) {
+    const time = new Date().toLocaleTimeString();
+    // eslint-disable-next-line react-hooks/purity
+    const id = Math.random().toString(36).substring(2, 9);
+    const sanitizedData = typeof data === "object" ? JSON.stringify(sanitizeForLog(data), null, 2) : String(data);
+    setDebugLogs((prev) => [
+      { id, time, direction, type, data: sanitizedData },
+      ...prev,
+    ].slice(0, 50));
+  }
 
   // Server state data
   const [tutors, setTutors] = useState([]);
@@ -41,8 +91,11 @@ export default function App() {
   // Coordinator Forms State
   const [tutorName, setTutorName] = useState("");
   const [tutorInstructions, setTutorInstructions] = useState("");
+  const [subject, setSubject] = useState("Physics");
+  const [customSubjectName, setCustomSubjectName] = useState("");
+  const [board, setBoard] = useState("UP Board");
   const [lessonPlan, setLessonPlan] = useState([
-    "विराम और जड़त्व (Inertia) के नियम का परिचय (अवधी में)",
+    "विराम और जड़त्व (Inertia) के नियम का परिचय",
     "बल (Force) और त्वरण (Acceleration) का परिचय चित्र के साथ",
     "घर्षण (Friction) गुणांक का एनीमेशन और प्रभाव",
     "यूपी बोर्ड परीक्षा के प्रश्नों पर आधारित एक छोटा क्विज़"
@@ -52,12 +105,15 @@ export default function App() {
   const [newStepText, setNewStepText] = useState("");
   const [newStudentName, setNewStudentName] = useState("");
   const [selectedStudentId, setSelectedStudentId] = useState("");
+  const [liveInstructionText, setLiveInstructionText] = useState("");
+  const [newStudentStepText, setNewStudentStepText] = useState("");
 
   // Student Active Session State
   const [activeStudent, setActiveStudent] = useState(null);
   const [assignedTutor, setAssignedTutor] = useState(null);
   const [activeDialect, setActiveDialect] = useState("awadhi");
   const [activePace, setActivePace] = useState("normal");
+  const [studentActiveTab, setStudentActiveTab] = useState("classroom");
 
   // Student Live Diagnostics Profile
   const [studentGaps, setStudentGaps] = useState([]);
@@ -120,6 +176,7 @@ export default function App() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchState();
     let interval = null;
     if (route === "/coordinator") {
@@ -136,6 +193,39 @@ export default function App() {
   const parsedSearch = new URLSearchParams(searchQuery);
   const activeStudentId = parsedSearch.get("studentId");
 
+  function sendTextMessage(text) {
+    if (!connected) return;
+
+    const textMsg = {
+      clientContent: {
+        turns: [
+          {
+            role: "user",
+            parts: [{ text: text }],
+          },
+        ],
+        turnComplete: true,
+      },
+    };
+
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify(textMsg));
+      logDebug("sent", "TEXT_TURN", textMsg);
+    }
+  }
+
+  const clearCoordinatorInstruction = async (studentId) => {
+    try {
+      await fetch("/api/students/clear-instruction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId }),
+      });
+    } catch (err) {
+      console.error("Failed to clear coordinator instruction:", err);
+    }
+  };
+
   const fetchStudentDetail = async (studentId) => {
     try {
       const response = await fetch(`/api/student-detail?studentId=${studentId}`);
@@ -146,13 +236,55 @@ export default function App() {
         setApiKey(data.apiKey || "");
         
         if (data.tutor) {
-          setActiveDialect(data.tutor.dialect || "awadhi");
-          setActivePace(data.tutor.pace || "normal");
-          setStudentCurrentStep(data.student.currentStepIndex || 0);
-          setStudentGaps(data.student.gaps || []);
-          setStudentStrengths(data.student.strengths || []);
-          setStudentQuizScore(data.student.quizScore || 0);
-          setStudentDiagnostics(data.student.diagnostics || "विद्यार्थी का प्रोफाइल अभी खाली है।");
+          // Priority: Student-specific tuned dialect/pace, then Tutor template defaults
+          const currentDialect = data.student.dialect || data.tutor.dialect || "awadhi";
+          const currentPace = data.student.pace || data.tutor.pace || "normal";
+          
+          setActiveDialect(currentDialect);
+          setActivePace(currentPace);
+
+          // Check for coordinator instruction injection
+          if (data.student.coordinatorInstruction && ws.current && ws.current.readyState === WebSocket.OPEN) {
+            const instructionText = data.student.coordinatorInstruction;
+            sendTextMessage(`[Coordinator Instruction: ${instructionText}]`);
+            clearCoordinatorInstruction(studentId);
+          }
+
+          // Check for coordinator-triggered reset:
+          if (data.student.currentStepIndex === 0 && (!data.student.gaps || data.student.gaps.length === 0) && (!data.student.strengths || data.student.strengths.length === 0) && data.student.quizScore === 0) {
+            if (studentCurrentStep !== 0 || studentGaps.length !== 0 || studentStrengths.length !== 0 || studentQuizScore !== 0) {
+              setStudentCurrentStep(0);
+              setStudentGaps([]);
+              setStudentStrengths([]);
+              setStudentQuizScore(0);
+              setStudentDiagnostics("प्रगति और पाठ योजना रीसेट की गई।");
+              setActiveQuiz(null);
+            }
+          } else {
+            setStudentCurrentStep(data.student.currentStepIndex || 0);
+            setStudentGaps(data.student.gaps || []);
+            setStudentStrengths(data.student.strengths || []);
+            setStudentQuizScore(data.student.quizScore || 0);
+            setStudentDiagnostics(data.student.diagnostics || "विद्यार्थी का प्रोफाइल अभी खाली है।");
+          }
+          
+          // Dynamically set greeting transcript on first load when not connected
+          if (!connected && transcript.length <= 1) {
+            const dialectGreeting = currentDialect === "awadhi"
+              ? "नमस्ते! हम तोहार अवधी AI Tutor अही।"
+              : currentDialect === "bhojpuri"
+              ? "प्रणाम! हम तोहार भोजपुरी AI Tutor अही।"
+              : "नमस्ते! हम आपके हिंदी AI Tutor हैं।";
+            
+            const subjectTerm = data.student.subject || data.tutor.subject || "भौतिकी (Physics)";
+            
+            setTranscript([
+              {
+                sender: "tutor",
+                text: `${dialectGreeting} हमसे ${subjectTerm} के बारे में पूछें, और हम तोहार संदेह दूर करब और blackboard पर चित्र बनाकर समझाइब।`,
+              }
+            ]);
+          }
         }
       } else {
         setError("विद्यार्थी रिकॉर्ड प्राप्त करने में विफल: " + data.error);
@@ -166,20 +298,21 @@ export default function App() {
   };
 
   useEffect(() => {
+    let interval = null;
     if (route === "/student" && activeStudentId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchStudentDetail(activeStudentId);
+      interval = setInterval(() => {
+        fetchStudentDetail(activeStudentId);
+      }, 3000);
     }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route, searchQuery, activeStudentId]);
 
-  const logDebug = (direction, type, data) => {
-    const time = new Date().toLocaleTimeString();
-    const id = Math.random().toString(36).substring(2, 9);
-    const sanitizedData = typeof data === "object" ? JSON.stringify(sanitizeForLog(data), null, 2) : String(data);
-    setDebugLogs((prev) => [
-      { id, time, direction, type, data: sanitizedData },
-      ...prev,
-    ].slice(0, 50));
-  };
+
 
   const clearLogs = () => {
     setDebugLogs([]);
@@ -196,7 +329,7 @@ export default function App() {
       });
       const result = await response.json();
       if (result.success) {
-        const filename = result.filepath.replace(/^.*[\\\/]/, '');
+        const filename = result.filepath.replace(/^.*[\\/]/, '');
         setSaveStatus(`Logs auto-saved to /logs/${filename}`);
         setTimeout(() => setSaveStatus(""), 6000);
       }
@@ -225,6 +358,7 @@ export default function App() {
     e.preventDefault();
     if (!tutorName.trim()) return;
 
+    const finalSubject = subject === "custom" ? customSubjectName.trim() : subject;
     const newTutor = {
       id: "tutor_" + Date.now(),
       name: tutorName.trim(),
@@ -232,6 +366,8 @@ export default function App() {
       lessonPlan,
       dialect: defaultDialect,
       pace: defaultPace,
+      subject: finalSubject || "Physics",
+      board: board.trim() || "UP Board",
     };
 
     try {
@@ -245,12 +381,10 @@ export default function App() {
         setTutors(data.tutors);
         setTutorName("");
         setTutorInstructions("");
-        setLessonPlan([
-          "विराम और जड़त्व (Inertia) के नियम का परिचय (अवधी में)",
-          "बल (Force) और त्वरण (Acceleration) का परिचय चित्र के साथ",
-          "घर्षण (Friction) गुणांक का एनीमेशन और प्रभाव",
-          "यूपी बोर्ड परीक्षा के प्रश्नों पर आधारित एक छोटा क्विज़"
-        ]);
+        setSubject("Physics");
+        setCustomSubjectName("");
+        setBoard("UP Board");
+        setLessonPlan(defaultLessonPlans["Physics"]);
         setSaveStatus("Tutor template created!");
         setTimeout(() => setSaveStatus(""), 3000);
       }
@@ -386,13 +520,63 @@ export default function App() {
     }
   };
 
+  const handleUpdateStudentLessonPlan = async (studentId, updatedPlan, updatedDialect = null, updatedPace = null) => {
+    try {
+      const response = await fetch("/api/students/update-lesson-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId,
+          lessonPlan: updatedPlan,
+          dialect: updatedDialect,
+          pace: updatedPace
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setSaveStatus("Student roadmap/settings updated!");
+        setTimeout(() => setSaveStatus(""), 3000);
+        fetchState();
+      }
+    } catch (err) {
+      console.error("Failed to update student lesson plan:", err);
+    }
+  };
+
+  const handleSendCoordinatorInstruction = async (studentId) => {
+    if (!liveInstructionText.trim()) return;
+    try {
+      const response = await fetch("/api/students/coordinator-instruction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId,
+          instruction: liveInstructionText.trim()
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setLiveInstructionText("");
+        setSaveStatus("Instruction queued for live session!");
+        setTimeout(() => setSaveStatus(""), 3000);
+        fetchState();
+      }
+    } catch (err) {
+      console.error("Failed to send coordinator instruction:", err);
+    }
+  };
+
   const restoreDefaultLessonPlan = () => {
-    setLessonPlan([
-      "विराम और जड़त्व (Inertia) के नियम का परिचय (अवधी में)",
-      "बल (Force) और त्वरण (Acceleration) का परिचय चित्र के साथ",
-      "घर्षण (Friction) गुणांक का एनीमेशन और प्रभाव",
-      "यूपी बोर्ड परीक्षा के प्रश्नों पर आधारित एक छोटा क्विज़"
-    ]);
+    const key = defaultLessonPlans[subject] ? subject : "Generic";
+    setLessonPlan(defaultLessonPlans[key]);
+  };
+
+  const handleSubjectChange = (val) => {
+    setSubject(val);
+    if (val !== "custom") {
+      const key = defaultLessonPlans[val] ? val : "Generic";
+      setLessonPlan(defaultLessonPlans[key]);
+    }
   };
 
   const handleAddStep = (e) => {
@@ -448,7 +632,7 @@ export default function App() {
       }
     ]);
 
-    let newScore = studentQuizScore;
+    let newScore;
     if (isCorrect) {
       newScore = Math.min(100, studentQuizScore + 25);
     } else {
@@ -529,7 +713,7 @@ export default function App() {
 **Assigned Tutor:** ${assignedTutor ? assignedTutor.name : "N/A"}
 
 ## Session Configuration
-- **Selected Dialect:** ${activeDialect === "awadhi" ? "Awadhi (अवधी)" : activeDialect === "hindi" ? "Hindi (हिंदी)" : "Auto-Adapt"}
+- **Selected Dialect:** ${activeDialect === "awadhi" ? "Awadhi (अवधी)" : activeDialect === "bhojpuri" ? "Bhojpuri (भोजपुरी)" : activeDialect === "hindi" ? "Hindi (हिंदी)" : "Auto-Adapt"}
 - **Selected Pace:** ${activePace === "slow" ? "Slow (धीमी)" : activePace === "normal" ? "Normal (सामान्य)" : "Fast (तेज़)"}
 
 ## Lesson Plan Progress
@@ -557,7 +741,7 @@ ${studentDiagnostics}
       });
       const result = await response.json();
       if (result.success) {
-        const filename = result.filepath.replace(/^.*[\\\/]/, '');
+        const filename = result.filepath.replace(/^.*[\\/]/, '');
         setSaveStatus(`Diagnostic report saved to /reports/${filename}`);
         setTimeout(() => setSaveStatus(""), 6000);
       }
@@ -617,7 +801,7 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
       });
       const result = await response.json();
       if (result.success) {
-        const filename = result.filepath.replace(/^.*[\\\/]/, '');
+        const filename = result.filepath.replace(/^.*[\\/]/, '');
         setSaveStatus(`Diagnostic report saved to /reports/${filename}`);
         setTimeout(() => setSaveStatus(""), 6000);
       }
@@ -646,12 +830,6 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
     transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [transcript]);
 
-  // Clean up audio on unmount
-  useEffect(() => {
-    return () => {
-      disconnectSession();
-    };
-  }, []);
 
   const connectSession = () => {
     if (!apiKey) {
@@ -674,6 +852,7 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
     const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${apiKey}`;
 
     try {
+      // eslint-disable-next-line react-hooks/immutability
       ws.current = new WebSocket(wsUrl);
 
       ws.current.onopen = () => {
@@ -684,10 +863,18 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
 
         // Format dialect and pace instructions dynamically
         const dialectInstructions = activeDialect === "awadhi"
-          ? "Speak entirely in the Awadhi dialect using Lucknow grammar, expressions, and tone. For example, use 'हमार' (hamaar), 'तोहार' (tohar), 'का हाल बा / का हाल अहै' (ka haal ba / ka haal ahai) and typical Awadhi structures."
+          ? "Speak entirely in the Lucknowi Awadhi dialect. Use correct Awadhi pronouns and verb endings: " +
+            "use 'हमार' (hamaar) or 'मोर' (mor) for 'my/our', 'तोर' (tor) or 'तोहार' (tohar) for 'your', 'अहै' (ahai) for 'is', 'अहईं' (ahain) for 'are/am', 'रहा' (raha) for 'was', and 'करत अहै' (karat ahai) for 'doing'. " +
+            "Greet with polite Lucknowi style like 'का हाल अहै?' or 'का करत अहा भैया?'. " +
+            "CRITICAL: Do NOT use Bhojpuri/Purabiya markers like 'बा' (ba), 'बानी' (baani), or 'का हाल बा' (this is Bhojpuri, not Awadhi). Keep it strictly Awadhi."
+          : activeDialect === "bhojpuri"
+          ? "Speak entirely in the Bhojpuri/Purabiya dialect. Use correct Bhojpuri pronouns and verb endings: " +
+            "use 'रउआ' (raua) for 'you' (polite), 'तोहार' (tohar) or 'हमार' (hamaar), 'बा' (ba) for 'is', 'बानी' (baani) for 'am/are', 'बाड़े' (baade) for 'is/are' (polite), and 'करत बानी' (karat baani) for 'doing'. " +
+            "Greet with 'का हाल बा?' or 'का करत बानी?'. " +
+            "CRITICAL: Do NOT use Awadhi markers like 'अहै' (ahai), 'अहईं' (ahain), or 'का हाल-चाल अहै?'. Keep it strictly Bhojpuri."
           : activeDialect === "hindi"
-          ? "Speak in standard Hindi suitable for UP Board students, using clear explanations and standard UP Board terminology."
-          : "Start in standard Hindi, but dynamically adapt your language to the student's dialect (Awadhi or Hindi) and speech patterns as they talk.";
+          ? `Speak in standard Hindi suitable for ${assignedTutor.board || "UP Board"} students, using clear explanations and standard state board curriculum terminology.`
+          : "Start in standard Hindi, but dynamically adapt your language to the student's dialect (Awadhi, Bhojpuri, or Hindi) and speech patterns as they talk. Stick to regional UP dialects.";
 
         const paceInstructions = activePace === "slow"
           ? "Speak at a slow, comfortable pace, pausing between main ideas to allow the student to digest the concepts."
@@ -700,8 +887,8 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
 
         // Dynamic system prompt incorporating coordinator settings
         const systemPrompt = 
-          `You are a helpful, warm, expert vernacular AI physics tutor named "${assignedTutor.name}" from the Hazratganj coaching belt, Lucknow.\n` +
-          `Your goal is to teach UP Board students physics concepts following a custom lesson plan defined by their coordinator.\n\n` +
+          `You are a helpful, warm, expert vernacular AI ${assignedTutor.subject || "physics"} tutor named "${assignedTutor.name}" for ${assignedTutor.board || "UP Board"} students in the UP region.\n` +
+          `Your goal is to teach UP Board students ${assignedTutor.subject || "physics"} concepts following a custom lesson plan defined by their coordinator.\n\n` +
           `LOCKED LESSON PLAN CHECKLIST:\n` +
           `${lessonStepsStr}\n\n` +
           `INSTRUCTIONS FOR CURRENT LESSON STATUS:\n` +
@@ -714,7 +901,13 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
           `COORDINATOR CUSTOM PERSONA & PEDAGOGY INSTRUCTIONS:\n` +
           `${assignedTutor.instructions || "No additional custom instructions."}\n\n` +
           `INTERACTIVE VISUAL BLACKBOARD & PROFILE DIAGNOSTICS:\n` +
-          `- Your explanations of physics concepts must be accompanied by visuals. Call the tool 'explain_with_visuals' to draw interactive Canvas/SVG animations on the Blackboard.\n` +
+          `- Your explanations of ${assignedTutor.subject || "physics"} concepts must be accompanied by visuals. Call the tool 'explain_with_visuals' to draw interactive Canvas/SVG animations on the Blackboard. You MUST use the preloaded standard CSS classes in the HTML output:\n` +
+          `  * A wrapping '<div class="canvas-container">' containing a '<canvas>' or '<svg>' element.\n` +
+          `  * A '<div class="controls-panel">' container for inputs/controls.\n` +
+          `  * A '<div class="slider-group">' enclosing a '<label>' with a '<span class="slider-val">' and an '<input type="range">'.\n` +
+          `  * Interactive action buttons using '<button class="sim-btn">'.\n` +
+          `  * A '<div class="explanation-card">' at the bottom for text descriptions in regional Hindi/Awadhi/Bhojpuri.\n` +
+          `  * Avoid injecting custom <style> tags or custom layout CSS. Stick entirely to these pre-styled standard classes.\n` +
           `- When evaluating or quizzing the student, you MUST call the tool 'render_interactive_quiz' to present a multiple-choice question on the student's screen. Do not just speak the quiz in audio. Provide the question, 4 options, the correct option index, and a short explanation. The system will pause speaking and wait for the student to select and submit their choice. Once the student submits, you will receive the correctness back as a tool response. Speak the explanation and guide them accordingly.\n` +
           `- You MUST call the tool 'update_learning_profile' regularly to update the student's profile progress (identified weaknesses/gaps, mastered strengths, quiz scores out of 100, a summary, and the index of the active lesson step, starting at 0).\n` +
           `- Call 'update_learning_profile' when they struggle with a question (adds to gaps), master a concept (adds to strengths), answer a quiz question (updates quiz score), or move to a new lesson step.\n` +
@@ -754,12 +947,12 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
                         html: {
                           type: "STRING",
                           description:
-                            "Complete HTML structure for the canvas or SVG visual. All custom styles should be in a self-contained <style> tag here. Design a container for any interactive sliders, value labels, or play/reset buttons.",
+                            "HTML structure for the visual. Do not include style tags; instead use preloaded CSS classes: .canvas-container, .controls-panel, .slider-group (containing a label with span.slider-val, and input[type='range']), button.sim-btn, and .explanation-card.",
                         },
                         js: {
                           type: "STRING",
                           description:
-                            "JavaScript animation logic and physics simulation. It should attach event listeners to control inputs (e.g. range sliders, restart buttons) and run a requestAnimationFrame loop to render physics updates. Do not use ES6 imports. Use plain browser JS APIs.",
+                            "JavaScript animation logic and physics simulation. It should attach event listeners to control inputs (e.g. range sliders, restart buttons) and run a requestAnimationFrame loop to render physics updates. Update the .slider-val spans when sliders change. Do not use ES6 imports. Use plain browser JS APIs.",
                         },
                         title: {
                           type: "STRING",
@@ -781,14 +974,14 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
                           items: {
                             type: "STRING",
                           },
-                          description: "List of identified learning gaps, weaknesses, or misconceptions (e.g. ['Inertia concept confusion', 'Newton\'s 3rd law action-reaction sign error'])."
+                          description: "List of identified learning gaps, weaknesses, or misconceptions (e.g. ['Inertia concept confusion', 'Newton's 3rd law action-reaction sign error'])."
                         },
                         strengths: {
                           type: "ARRAY",
                           items: {
                             type: "STRING",
                           },
-                          description: "List of concepts the student has mastered or answered correctly (e.g. ['Newton\'s 1st Law definition', 'Free-fall gravity visual understanding'])."
+                          description: "List of concepts the student has mastered or answered correctly (e.g. ['Newton's 1st Law definition', 'Free-fall gravity visual understanding'])."
                         },
                         quizScore: {
                           type: "NUMBER",
@@ -910,6 +1103,7 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
       if (ws.current.readyState === WebSocket.OPEN) {
         ws.current.close();
       }
+      // eslint-disable-next-line react-hooks/immutability
       ws.current = null;
     }
 
@@ -917,6 +1111,14 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
     setConnecting(false);
     setActiveQuiz(null);
   };
+
+  // Clean up audio on unmount
+  useEffect(() => {
+    return () => {
+      disconnectSession();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleServerMessage = (data) => {
     if (data.serverContent?.interrupted) {
@@ -1106,26 +1308,6 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
     sendTextMessage(userText);
   };
 
-  const sendTextMessage = (text) => {
-    if (!connected) return;
-
-    const textMsg = {
-      clientContent: {
-        turns: [
-          {
-            role: "user",
-            parts: [{ text: text }],
-          },
-        ],
-        turnComplete: true,
-      },
-    };
-
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify(textMsg));
-      logDebug("sent", "TEXT_TURN", textMsg);
-    }
-  };
 
   const triggerNextStep = () => {
     const planSteps = assignedTutor ? assignedTutor.lessonPlan : [];
@@ -1147,7 +1329,9 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
     sendTextMessage(commandText);
   };
 
-  const activePlanSteps = assignedTutor ? assignedTutor.lessonPlan : [];
+  const activePlanSteps = activeStudent && activeStudent.lessonPlan && activeStudent.lessonPlan.length > 0
+    ? activeStudent.lessonPlan
+    : (assignedTutor ? assignedTutor.lessonPlan : []);
   const progressPercent = activePlanSteps.length > 0 
     ? Math.min(100, Math.round(((studentCurrentStep + 1) / activePlanSteps.length) * 100))
     : 0;
@@ -1159,8 +1343,8 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
     return (
       <div className="landing-container">
         <div className="landing-hero">
-          <h1>📚 अवधी AI Physics Vernacular Classroom</h1>
-          <p>Lucknow Hazratganj Coaching Belt Hub — UP Board Exams Gateway</p>
+          <h1>📚 UP Regional AI Vernacular Tutor</h1>
+          <p>Lucknow Hazratganj Coaching Hub — State Board Exams Gateway</p>
         </div>
         <div className="landing-grid">
           <div className="landing-card" onClick={() => navigateTo("/coordinator")}>
@@ -1252,6 +1436,45 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
                     placeholder="उदा. भौतिकी गुरु"
                   />
                 </div>
+                <div className="settings-row">
+                  <div className="settings-group half-width">
+                    <label>Subject (विषय)</label>
+                    <select className="input-key select-custom" value={subject} onChange={(e) => handleSubjectChange(e.target.value)}>
+                      <option value="Physics">Physics (भौतिकी)</option>
+                      <option value="Chemistry">Chemistry (रसायन शास्त्र)</option>
+                      <option value="Mathematics">Mathematics (गणित)</option>
+                      <option value="Biology">Biology (जीव विज्ञान)</option>
+                      <option value="English">English (अंग्रेजी)</option>
+                      <option value="custom">Other / Custom (अन्य)</option>
+                    </select>
+                  </div>
+                  <div className="settings-group half-width">
+                    <label>Target Board (standard)</label>
+                    <input
+                      type="text"
+                      className="input-key"
+                      required
+                      value={board}
+                      onChange={(e) => setBoard(e.target.value)}
+                      placeholder="उदा. UP Board Class 11"
+                    />
+                  </div>
+                </div>
+
+                {subject === "custom" && (
+                  <div className="settings-group">
+                    <label>Custom Subject Name</label>
+                    <input
+                      type="text"
+                      className="input-key"
+                      required
+                      value={customSubjectName}
+                      onChange={(e) => setCustomSubjectName(e.target.value)}
+                      placeholder="उदा. इतिहास"
+                    />
+                  </div>
+                )}
+
                 <div className="settings-group">
                   <label>Custom Instructions Persona Overlay</label>
                   <textarea
@@ -1267,6 +1490,7 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
                     <label>Dialect</label>
                     <select className="input-key select-custom" value={defaultDialect} onChange={(e) => setDefaultDialect(e.target.value)}>
                       <option value="awadhi">Awadhi (अवधी)</option>
+                      <option value="bhojpuri">Bhojpuri (भोजपुरी)</option>
                       <option value="hindi">Hindi (हिंदी)</option>
                       <option value="auto">Auto-Adapt (स्वचालित)</option>
                     </select>
@@ -1408,7 +1632,9 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
                   <div className="dashboard-progress-section">
                     {(() => {
                       const tutorObj = tutors.find(t => t.id === activeSelectedStudent.assignedTutorId);
-                      const steps = tutorObj ? tutorObj.lessonPlan : [];
+                      const steps = activeSelectedStudent.lessonPlan && activeSelectedStudent.lessonPlan.length > 0 
+                        ? activeSelectedStudent.lessonPlan 
+                        : (tutorObj ? tutorObj.lessonPlan : []);
                       const stepIdx = activeSelectedStudent.currentStepIndex || 0;
                       const percent = steps.length > 0 ? Math.min(100, Math.round(((stepIdx + 1) / steps.length) * 100)) : 0;
                       return (
@@ -1456,6 +1682,152 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
                     )}
                   </div>
 
+                  {/* Student-Level Tuning Panel */}
+                  <div className="diagnostics-card tuning-card">
+                    <h3>⚙️ Student-Level Lesson Plan & Tuning</h3>
+                    
+                    {/* Dialect and Pace Tuning */}
+                    <div className="settings-row" style={{ gap: "0.5rem", marginBottom: "0.75rem" }}>
+                      <div className="settings-group half-width">
+                        <label>Dialect (बोली)</label>
+                        <select 
+                          className="input-key select-custom" 
+                          value={activeSelectedStudent.dialect || tutors.find(t => t.id === activeSelectedStudent.assignedTutorId)?.dialect || "awadhi"} 
+                          onChange={(e) => handleUpdateStudentLessonPlan(activeSelectedStudent.id, activeSelectedStudent.lessonPlan || [], e.target.value, activeSelectedStudent.pace || "normal")}
+                        >
+                          <option value="awadhi">Awadhi (अवधी)</option>
+                          <option value="bhojpuri">Bhojpuri (भोजपुरी)</option>
+                          <option value="hindi">Hindi (हिंदी)</option>
+                          <option value="auto">Auto-Adapt (स्वचालित)</option>
+                        </select>
+                      </div>
+                      <div className="settings-group half-width">
+                        <label>Pace (गति)</label>
+                        <select 
+                          className="input-key select-custom" 
+                          value={activeSelectedStudent.pace || tutors.find(t => t.id === activeSelectedStudent.assignedTutorId)?.pace || "normal"} 
+                          onChange={(e) => handleUpdateStudentLessonPlan(activeSelectedStudent.id, activeSelectedStudent.lessonPlan || [], activeSelectedStudent.dialect || "awadhi", e.target.value)}
+                        >
+                          <option value="slow">Slow (धीमी)</option>
+                          <option value="normal">Normal (सामान्य)</option>
+                          <option value="fast">Fast (तेज़)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Lesson Plan Steps editor */}
+                    <div className="student-checklist-tuner" style={{ marginBottom: "0.75rem" }}>
+                      <label style={{ fontSize: "0.85rem", color: "var(--text-secondary)", fontWeight: 500 }}>Tune Student Roadmap Steps</label>
+                      <div className="lesson-plan-list small-height" style={{ maxHeight: "140px", marginTop: "0.25rem" }}>
+                        {(() => {
+                          const tutorObj = tutors.find(t => t.id === activeSelectedStudent.assignedTutorId);
+                          const planSteps = activeSelectedStudent.lessonPlan && activeSelectedStudent.lessonPlan.length > 0 
+                            ? activeSelectedStudent.lessonPlan 
+                            : (tutorObj ? tutorObj.lessonPlan : []);
+                          
+                          return planSteps.map((step, idx) => (
+                            <div key={idx} className="step-builder-item" style={{ padding: "0.3rem 0.5rem" }}>
+                              <span className="step-num">{idx + 1}</span>
+                              <span className="step-text" style={{ fontSize: "0.8rem" }}>{step}</span>
+                              <div style={{ display: "flex", gap: "0.25rem" }}>
+                                <button 
+                                  type="button" 
+                                  disabled={idx === 0} 
+                                  onClick={() => {
+                                    const newPlan = [...planSteps];
+                                    const temp = newPlan[idx];
+                                    newPlan[idx] = newPlan[idx - 1];
+                                    newPlan[idx - 1] = temp;
+                                    handleUpdateStudentLessonPlan(activeSelectedStudent.id, newPlan);
+                                  }}
+                                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.75rem" }}
+                                >
+                                  ⬆️
+                                </button>
+                                <button 
+                                  type="button" 
+                                  disabled={idx === planSteps.length - 1} 
+                                  onClick={() => {
+                                    const newPlan = [...planSteps];
+                                    const temp = newPlan[idx];
+                                    newPlan[idx] = newPlan[idx + 1];
+                                    newPlan[idx + 1] = temp;
+                                    handleUpdateStudentLessonPlan(activeSelectedStudent.id, newPlan);
+                                  }}
+                                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.75rem" }}
+                                >
+                                  ⬇️
+                                </button>
+                                <button 
+                                  type="button" 
+                                  onClick={() => {
+                                    const newPlan = planSteps.filter((_, i) => i !== idx);
+                                    handleUpdateStudentLessonPlan(activeSelectedStudent.id, newPlan);
+                                  }}
+                                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.75rem" }}
+                                >
+                                  ❌
+                                </button>
+                              </div>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                      <div className="add-step-form" style={{ marginTop: "0.5rem" }}>
+                        <input
+                          type="text"
+                          className="input-key add-step-input"
+                          placeholder="नया पाठ चरण जोड़ें..."
+                          value={newStudentStepText}
+                          onChange={(e) => setNewStudentStepText(e.target.value)}
+                          style={{ fontSize: "0.8rem", padding: "0.4rem" }}
+                        />
+                        <button 
+                          type="button" 
+                          className="btn-add-step" 
+                          onClick={() => {
+                            if (newStudentStepText.trim()) {
+                              const tutorObj = tutors.find(t => t.id === activeSelectedStudent.assignedTutorId);
+                              const currentPlan = activeSelectedStudent.lessonPlan && activeSelectedStudent.lessonPlan.length > 0 
+                                ? activeSelectedStudent.lessonPlan 
+                                : (tutorObj ? tutorObj.lessonPlan : []);
+                              
+                              const newPlan = [...currentPlan, newStudentStepText.trim()];
+                              handleUpdateStudentLessonPlan(activeSelectedStudent.id, newPlan);
+                              setNewStudentStepText("");
+                            }
+                          }}
+                          style={{ padding: "0.4rem 0.6rem", fontSize: "0.8rem" }}
+                        >
+                          ➕
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Coordinator Live Prompt Note to Tutor */}
+                    <div className="coordinator-live-prompt">
+                      <label style={{ fontSize: "0.85rem", color: "var(--text-secondary)", fontWeight: 500 }}>Live Supervisor Note (AI Tutor prompt)</label>
+                      <div className="add-step-form" style={{ marginTop: "0.25rem" }}>
+                        <input
+                          type="text"
+                          className="input-key"
+                          placeholder="उदा. 'धीरे समझाइए', 'एक क्विज पूछिए'..."
+                          value={liveInstructionText}
+                          onChange={(e) => setLiveInstructionText(e.target.value)}
+                          style={{ fontSize: "0.8rem", padding: "0.4rem" }}
+                        />
+                        <button 
+                          type="button" 
+                          className="btn-add-step" 
+                          onClick={() => handleSendCoordinatorInstruction(activeSelectedStudent.id)}
+                          style={{ padding: "0.4rem 0.6rem", fontSize: "0.8rem", background: "linear-gradient(135deg, #0891b2 0%, #0369a1 100%)", color: "white", borderColor: "transparent" }}
+                        >
+                          📣 Send
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Summary */}
                   <div className="diagnostics-card flex-grow-card">
                     <h3>📝 Summary Diagnostics Report</h3>
@@ -1499,7 +1871,7 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
         <div className="app-container" style={{ justifyContent: "center", alignItems: "center" }}>
           <div className="student-select-container glass-panel glow">
             <div className="panel-header" style={{ justifyContent: "center" }}>
-              <h2>🎓 Hazratganj Student Classroom Gate</h2>
+              <h2>🎓 UP Vernacular Student Classroom Gate</h2>
             </div>
             <div className="panel-content select-panel-content">
               <p>कक्षा में प्रवेश करने के लिए अपना नाम चुनें:</p>
@@ -1554,7 +1926,7 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
         <header className="app-header">
           <div>
             <h1 className="clickable-title" onClick={() => navigateTo("/")}>🎓 Vernacular Student Classroom</h1>
-            <p>अवधी / हिंदी ट्यूटर हब — संवादात्मक भौतिकी पाठशाला</p>
+            <p>{activeDialect === "awadhi" ? "अवधी" : activeDialect === "bhojpuri" ? "भोजपुरी" : "हिंदी"} AI {assignedTutor ? assignedTutor.subject : "विषय"} ट्यूटर हब — संवादात्मक पाठशाला</p>
           </div>
           
           <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
@@ -1578,175 +1950,306 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
             </div>
 
             <div className="panel-content">
-              {/* Settings / Connection Controls */}
-              {!connected ? (
-                <div className="classroom-init-settings">
-                  <div className="student-badge-info" style={{ marginBottom: "0.5rem" }}>
-                    👤 विद्यार्थी का नाम: <strong>{activeStudent.name}</strong>
-                  </div>
-                  {assignedTutor ? (
-                    <>
-                      <div className="tutor-assigned-preview">
-                        <p><strong>assigned tutor settings:</strong></p>
-                        <ul>
-                          <li>भाषा: {assignedTutor.dialect === "awadhi" ? "अवधी (Awadhi)" : assignedTutor.dialect === "hindi" ? "हिंदी" : "Adapt"}</li>
-                          <li>गति: {assignedTutor.pace}</li>
-                        </ul>
-                      </div>
-                      <div className="settings-row" style={{ gap: "0.5rem", marginBottom: "1rem" }}>
-                        <div className="settings-group half-width">
-                          <label>Choose Dialect (बोली)</label>
-                          <select className="input-key select-custom" value={activeDialect} onChange={(e) => setActiveDialect(e.target.value)}>
-                            <option value="awadhi">Awadhi (अवधी)</option>
-                            <option value="hindi">Hindi (हिंदी)</option>
-                            <option value="auto">Auto-Adapt (स्वचालित)</option>
-                          </select>
-                        </div>
-                        <div className="settings-group half-width">
-                          <label>Choose Pace (गति)</label>
-                          <select className="input-key select-custom" value={activePace} onChange={(e) => setActivePace(e.target.value)}>
-                            <option value="slow">Slow (धीमी)</option>
-                            <option value="normal">Normal (सामान्य)</option>
-                            <option value="fast">Fast (तेज़)</option>
-                          </select>
-                        </div>
-                      </div>
-                      <button className="btn-connect" onClick={connectSession} disabled={connecting}>
-                        {connecting ? "कनेक्ट हो रहा है..." : "ट्यूटर से जुड़ें (Start Classroom)"}
-                      </button>
-                      <button 
-                        className="btn-connect disconnect" 
-                        style={{ marginTop: "0.5rem", width: "100%" }}
-                        onClick={() => handleResetStudentProgress(activeStudentId)}
-                        disabled={connecting}
-                      >
-                        🔄 Reset Progress & Lesson (रीसेट प्रगति)
-                      </button>
-                    </>
-                  ) : (
-                    <div className="alert-error" style={{ background: "rgba(239, 68, 68, 0.05)", border: "1px solid rgba(239, 68, 68, 0.15)", color: "#ef4444" }}>
-                      ⚠️ ट्यूटर असाइन नहीं है। कृपया कोऑर्डिनेटर हब में जाकर इस विद्यार्थी को ट्यूटर असाइन करें।
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="connected-classroom-header">
-                  <div className="student-badge-info">
-                    👤 <strong>{activeStudent.name}</strong> | 🗣️ {activeDialect === "awadhi" ? "अवधी" : activeDialect === "hindi" ? "हिंदी" : "Auto-adapt"}
-                  </div>
-                  <button className="btn-connect disconnect" onClick={disconnectSession} style={{ padding: "0.4rem 0.8rem", fontSize: "0.8rem" }}>
-                    डिस्कनेक्ट (Close Session)
-                  </button>
-                </div>
-              )}
-
-              {/* Checklist Roadmap */}
-              <div className="student-checklist-container">
-                <h3>📖 Lesson Roadmap Checklist</h3>
-                <div className="roadmap-checklist">
-                  {activePlanSteps.length === 0 ? (
-                    <p className="no-data-text">कोई पाठ चरण असाइन नहीं किया गया है।</p>
-                  ) : (
-                    activePlanSteps.map((step, idx) => {
-                      let itemClass = "upcoming";
-                      let icon = "⏱️";
-                      if (idx === studentCurrentStep) {
-                        itemClass = "active";
-                        icon = "⚡";
-                      } else if (idx < studentCurrentStep) {
-                        itemClass = "completed";
-                        icon = "✅";
-                      }
-                      return (
-                        <div key={idx} className={`checklist-item ${itemClass}`}>
-                          <span className="checklist-icon">{icon}</span>
-                          <span className="checklist-text">{step}</span>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-
-                {connected && (
-                  <div className="quick-actions-bar">
-                    <button type="button" className="btn-quick-action proceed" onClick={triggerNextStep}>
-                      आगे बढ़ें (Next Step) 👉
-                    </button>
-                    <button type="button" className="btn-quick-action quiz" onClick={triggerQuiz}>
-                      📝 Take Quiz
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Avatar Wave animation */}
-              <div className="avatar-container">
-                <div className={`avatar-outer ${connected ? "active" : ""}`}>
-                  <div className="visualizer-rings" />
-                  <div className={`avatar-core ${isRecording ? "recording" : connected ? "speaking" : ""}`}>
-                    <div className="avatar-icon-glow" />
-                    <span style={{ fontSize: "2rem" }}>🪐</span>
-                  </div>
-                </div>
-                {connected && (
-                  <div className="speech-waves">
-                    <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
-                    <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
-                    <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
-                    <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
-                    <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
-                  </div>
-                )}
-              </div>
-
-              {/* Transcript subtitles */}
-              <div className="transcript-panel">
-                <h3>संवाद विवरण (Transcript)</h3>
-                <div className="transcript-area">
-                  {transcript.map((msg, i) => (
-                    <div key={i} className={`msg ${msg.sender}`}>
-                      <span className="speaker-label">{msg.sender}</span>
-                      <p>{msg.text}</p>
-                    </div>
-                  ))}
-                  <div ref={transcriptEndRef} />
-                </div>
-              </div>
-
-              {/* Mic Controls */}
-              <div className="mic-controls">
-                <button
-                  className={`btn-mic ${isRecording ? "recording" : ""}`}
-                  onClick={toggleRecording}
-                  disabled={!connected}
+              {/* Tab Navigation */}
+              <div className="tab-navigation" style={{ marginBottom: "1.25rem" }}>
+                <button 
+                  className={`tab-btn ${studentActiveTab === "classroom" ? "active" : ""}`}
+                  onClick={() => setStudentActiveTab("classroom")}
                 >
-                  {isRecording ? (
-                    <svg viewBox="0 0 24 24" fill="currentColor">
-                      <rect x="6" y="6" width="12" height="12" rx="2" />
-                    </svg>
-                  ) : (
-                    <svg viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
-                      <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
-                    </svg>
-                  )}
+                  🗣️ Live Classroom (लाइव कक्षा)
+                </button>
+                <button 
+                  className={`tab-btn ${studentActiveTab === "analytics" ? "active" : ""}`}
+                  onClick={() => setStudentActiveTab("analytics")}
+                >
+                  📊 My Progress & Analytics (प्रगति विवरण)
                 </button>
               </div>
 
-              {/* Text Input fallback */}
-              {connected && (
-                <form onSubmit={handleSendText} style={{ display: "flex", gap: "0.5rem" }}>
-                  <input
-                    type="text"
-                    className="input-key"
-                    placeholder="अपना संदेह यहाँ टाइप करें..."
-                    value={textInput}
-                    onChange={(e) => setTextInput(e.target.value)}
-                  />
-                  <button type="submit" className="btn-connect" style={{ padding: "0.6rem 1rem" }}>
-                    भेजें
-                  </button>
-                </form>
+              {studentActiveTab === "classroom" && (
+                <>
+                  {/* Settings / Connection Controls */}
+                  {!connected ? (
+                    <div className="classroom-init-settings">
+                      <div className="student-badge-info" style={{ marginBottom: "0.5rem" }}>
+                        👤 विद्यार्थी का नाम: <strong>{activeStudent.name}</strong>
+                      </div>
+                      {assignedTutor ? (
+                        <>
+                          <div className="tutor-assigned-preview">
+                            <p><strong>assigned tutor settings:</strong></p>
+                            <ul>
+                              <li>भाषा: {assignedTutor.dialect === "awadhi" ? "अवधी (Awadhi)" : assignedTutor.dialect === "bhojpuri" ? "भोजपुरी (Bhojpuri)" : assignedTutor.dialect === "hindi" ? "हिंदी" : "Adapt"}</li>
+                              <li>गति: {assignedTutor.pace}</li>
+                            </ul>
+                          </div>
+                          <div className="settings-row" style={{ gap: "0.5rem", marginBottom: "1rem" }}>
+                            <div className="settings-group half-width">
+                              <label>Choose Dialect (बोली)</label>
+                              <select className="input-key select-custom" value={activeDialect} onChange={(e) => setActiveDialect(e.target.value)}>
+                                <option value="awadhi">Awadhi (अवधी)</option>
+                                <option value="bhojpuri">Bhojpuri (भोजपुरी)</option>
+                                <option value="hindi">Hindi (हिंदी)</option>
+                                <option value="auto">Auto-Adapt (स्वचालित)</option>
+                              </select>
+                            </div>
+                            <div className="settings-group half-width">
+                              <label>Choose Pace (गति)</label>
+                              <select className="input-key select-custom" value={activePace} onChange={(e) => setActivePace(e.target.value)}>
+                                <option value="slow">Slow (धीमी)</option>
+                                <option value="normal">Normal (सामान्य)</option>
+                                <option value="fast">Fast (तेज़)</option>
+                              </select>
+                            </div>
+                          </div>
+                          <button className="btn-connect" onClick={connectSession} disabled={connecting}>
+                            {connecting ? "कनेक्ट हो रहा है..." : "ट्यूटर से जुड़ें (Start Classroom)"}
+                          </button>
+                          <button 
+                            className="btn-connect disconnect" 
+                            style={{ marginTop: "0.5rem", width: "100%" }}
+                            onClick={() => handleResetStudentProgress(activeStudentId)}
+                            disabled={connecting}
+                          >
+                            🔄 Reset Progress & Lesson (रीसेट प्रगति)
+                          </button>
+                        </>
+                      ) : (
+                        <div className="alert-error" style={{ background: "rgba(239, 68, 68, 0.05)", border: "1px solid rgba(239, 68, 68, 0.15)", color: "#ef4444" }}>
+                          ⚠️ ट्यूटर असाइन नहीं है। कृपया कोऑर्डिनेटर हब में जाकर इस विद्यार्थी को ट्यूटर असाइन करें।
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="connected-classroom-header">
+                      <div className="student-badge-info">
+                        👤 <strong>{activeStudent.name}</strong> | 🗣️ {activeDialect === "awadhi" ? "अवधी" : activeDialect === "bhojpuri" ? "भोजपुरी" : activeDialect === "hindi" ? "हिंदी" : "Auto-adapt"}
+                      </div>
+                      <button className="btn-connect disconnect" onClick={disconnectSession} style={{ padding: "0.4rem 0.8rem", fontSize: "0.8rem" }}>
+                        डिस्कनेक्ट (Close Session)
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Checklist Roadmap */}
+                  <div className="student-checklist-container">
+                    <h3>📖 Lesson Roadmap Checklist ({progressPercent}%)</h3>
+                    <div className="roadmap-checklist">
+                      {activePlanSteps.length === 0 ? (
+                        <p className="no-data-text">कोई पाठ चरण असाइन नहीं किया गया है।</p>
+                      ) : (
+                        activePlanSteps.map((step, idx) => {
+                          let itemClass = "upcoming";
+                          let icon = "⏱️";
+                          if (idx === studentCurrentStep) {
+                            itemClass = "active";
+                            icon = "⚡";
+                          } else if (idx < studentCurrentStep) {
+                            itemClass = "completed";
+                            icon = "✅";
+                          }
+                          return (
+                            <div key={idx} className={`checklist-item ${itemClass}`}>
+                              <span className="checklist-icon">{icon}</span>
+                              <span className="checklist-text">{step}</span>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    {connected && (
+                      <div className="quick-actions-bar">
+                        <button type="button" className="btn-quick-action proceed" onClick={triggerNextStep}>
+                          आगे बढ़ें (Next Step) 👉
+                        </button>
+                        <button type="button" className="btn-quick-action quiz" onClick={triggerQuiz}>
+                          📝 Take Quiz
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Avatar Wave animation */}
+                  <div className="avatar-container">
+                    <div className={`avatar-outer ${connected ? "active" : ""}`}>
+                      <div className="visualizer-rings" />
+                      <div className={`avatar-core ${isRecording ? "recording" : connected ? "speaking" : ""}`}>
+                        <div className="avatar-icon-glow" />
+                        <span style={{ fontSize: "2rem" }}>🪐</span>
+                      </div>
+                    </div>
+                    {connected && (
+                      <div className="speech-waves">
+                        <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
+                        <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
+                        <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
+                        <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
+                        <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Transcript subtitles */}
+                  <div className="transcript-panel">
+                    <h3>संवाद विवरण (Transcript)</h3>
+                    <div className="transcript-area">
+                      {transcript.map((msg, i) => (
+                        <div key={i} className={`msg ${msg.sender}`}>
+                          <span className="speaker-label">{msg.sender}</span>
+                          <p>{msg.text}</p>
+                        </div>
+                      ))}
+                      <div ref={transcriptEndRef} />
+                    </div>
+                  </div>
+
+                  {/* Mic Controls */}
+                  <div className="mic-controls">
+                    <button
+                      className={`btn-mic ${isRecording ? "recording" : ""}`}
+                      onClick={toggleRecording}
+                      disabled={!connected}
+                    >
+                      {isRecording ? (
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                          <rect x="6" y="6" width="12" height="12" rx="2" />
+                        </svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+                          <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Text Input fallback */}
+                  {connected && (
+                    <form onSubmit={handleSendText} style={{ display: "flex", gap: "0.5rem" }}>
+                      <input
+                        type="text"
+                        className="input-key"
+                        placeholder="अपना संदेह यहाँ टाइप करें..."
+                        value={textInput}
+                        onChange={(e) => setTextInput(e.target.value)}
+                      />
+                      <button type="submit" className="btn-connect" style={{ padding: "0.6rem 1rem" }}>
+                        भेजें
+                      </button>
+                    </form>
+                  )}
+                </>
+              )}
+
+              {studentActiveTab === "analytics" && (
+                <div className="analytics-tab-content" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+                  {/* Progress Meter */}
+                  <div className="dashboard-progress-section">
+                    <div className="progress-labels">
+                      <span>📖 overall course checklist progress</span>
+                      <span>{progressPercent}%</span>
+                    </div>
+                    <div className="progress-track-bg">
+                      <div className="progress-fill" style={{ width: `${progressPercent}%` }} />
+                    </div>
+                    <p className="active-step-hint">
+                      <strong>Current Step:</strong> {activePlanSteps[studentCurrentStep] || "None"}
+                    </p>
+                  </div>
+
+                  {/* Score & performance grade */}
+                  <div style={{ display: "flex", gap: "1.25rem", alignItems: "center" }}>
+                    {/* Circle Gauge */}
+                    {(() => {
+                      let borderCol = "#06b6d4";
+                      let textCol = "#06b6d4";
+                      let performanceGrade = "Progressing";
+                      let shadowVal = "0 0 15px rgba(6, 182, 212, 0.3)";
+
+                      if (studentQuizScore >= 80) {
+                        borderCol = "#10b981";
+                        textCol = "#10b981";
+                        performanceGrade = "Mastered";
+                        shadowVal = "0 0 15px rgba(16, 185, 129, 0.3)";
+                      } else if (studentQuizScore < 50) {
+                        borderCol = "#ef4444";
+                        textCol = "#ef4444";
+                        performanceGrade = "Needs Focus";
+                        shadowVal = "0 0 15px rgba(239, 68, 68, 0.3)";
+                      }
+
+                      return (
+                        <div 
+                          className="quiz-score-circle" 
+                          style={{ 
+                            borderColor: borderCol,
+                            boxShadow: shadowVal 
+                          }}
+                          title={`Performance: ${performanceGrade}`}
+                        >
+                          <span className="score-val" style={{ color: textCol }}>{studentQuizScore}</span>
+                          <span className="score-lbl">quiz score</span>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Grade Text Description */}
+                    <div>
+                      <h4 style={{ margin: "0 0 0.25rem 0", fontSize: "1.1rem" }}>
+                        Status:{" "}
+                        <span 
+                          style={{ 
+                            color: studentQuizScore >= 80 ? "#10b981" : studentQuizScore < 50 ? "#ef4444" : "#06b6d4",
+                            fontWeight: "bold"
+                          }}
+                        >
+                          {studentQuizScore >= 80 ? "Mastered (पूर्ण दक्षता)" : studentQuizScore < 50 ? "Needs Focus (विशेष ध्यान दें)" : "Progressing (प्रगति पर)"}
+                        </span>
+                      </h4>
+                      <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+                        Based on your latest interactive quiz performance in {assignedTutor ? assignedTutor.subject : "the course"}.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Strengths & Gaps */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                    <div className="diagnostics-card">
+                      <h3>🟢 Mastered Strengths</h3>
+                      {studentStrengths.length === 0 ? (
+                        <p className="no-data-text">No concepts mastered yet.</p>
+                      ) : (
+                        <div className="badges-container">
+                          {studentStrengths.map((str, idx) => (
+                            <span key={idx} className="badge strength-badge">{str}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="diagnostics-card">
+                      <h3>🔴 Learning Gaps</h3>
+                      {studentGaps.length === 0 ? (
+                        <p className="no-data-text">No gaps identified yet.</p>
+                      ) : (
+                        <div className="badges-container">
+                          {studentGaps.map((gap, idx) => (
+                            <span key={idx} className="badge gap-badge">{gap}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* AI Qualitative Recommendations */}
+                  <div className="diagnostics-card flex-grow-card">
+                    <h3>💡 Personalized AI Recommendations</h3>
+                    <div className="summary-text-box" style={{ maxHeight: "none" }}>
+                      {studentDiagnostics || "Recommendations will generate once session starts."}
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           </section>
@@ -1835,7 +2338,7 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
                   <path d="M9 11h6" />
                 </svg>
                 <h3>ब्लैकबोर्ड खाली है</h3>
-                <p>ट्यूटर से भौतिकी का कोई नियम पूछें (जैसे: 'Newton's law' या 'Inertia'). ट्यूटर समझाने के लिए यहाँ एक जीवंत एनीमेशन बनाएगा।</p>
+                <p>ट्यूटर से {assignedTutor ? assignedTutor.subject : "विषय"} का कोई नियम पूछें। ट्यूटर समझाने के लिए यहाँ एक जीवंत एनीमेशन बनाएगा।</p>
               </div>
             )}
           </section>

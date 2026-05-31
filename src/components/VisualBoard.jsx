@@ -1,5 +1,3 @@
-import React from "react";
-
 export default function VisualBoard({ visualCode }) {
   if (!visualCode) return null;
 

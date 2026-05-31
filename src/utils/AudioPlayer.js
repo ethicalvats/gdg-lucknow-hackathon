@@ -23,7 +23,7 @@ export class AudioPlayer {
   playChunk(base64Data) {
     this.init();
 
-    // Decode base64 to binary string
+    // Convert base64 to binary string
     const binaryString = window.atob(base64Data);
     const bytes = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {
@@ -31,7 +31,11 @@ export class AudioPlayer {
     }
 
     // Convert raw 16-bit PCM bytes (little-endian) to Int16Array
-    const int16Data = new Int16Array(bytes.buffer);
+    // Ensure byteLength is even to avoid RangeError
+    const buffer = bytes.buffer;
+    const byteLength = buffer.byteLength;
+    const alignedLength = byteLength - (byteLength % 2);
+    const int16Data = new Int16Array(buffer, 0, alignedLength / 2);
 
     // Convert Int16Array to Float32Array [-1.0, 1.0] for Web Audio API
     const float32Data = new Float32Array(int16Data.length);
@@ -67,7 +71,7 @@ export class AudioPlayer {
     this.activeSources.forEach((source) => {
       try {
         source.stop();
-      } catch (err) {
+      } catch {
         // Source might have already finished playing
       }
     });

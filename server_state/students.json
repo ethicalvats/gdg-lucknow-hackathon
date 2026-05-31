@@ -3,10 +3,67 @@
     "id": "student_1779463652745",
     "name": "Vikas Yadav",
     "assignedTutorId": "tutor_1779463635187",
+    "gaps": ["Inertia sign convention confusion"],
+    "strengths": ["Newton's 1st Law definition"],
+    "quizScore": 75,
+    "diagnostics": "छात्र जड़त्व के नियम को समझता है लेकिन दिशा के संकेत में थोड़ा भ्रमित है। त्वरित सुधार की आवश्यकता है।",
+    "currentStepIndex": 1,
+    "dialect": "awadhi",
+    "pace": "normal",
+    "lessonPlan": [
+      "विराम और जड़त्व (Inertia) के नियम का परिचय (अवधी में)",
+      "बल (Force) और त्वरण (Acceleration) का परिचय चित्र के साथ",
+      "घर्षण (Friction) गुणांक का एनीमेशन और प्रभाव",
+      "यूपी बोर्ड परीक्षा के प्रश्नों पर आधारित एक छोटा क्विज़"
+    ]
+  },
+  {
+    "id": "student_priya_mishra",
+    "name": "Priya Mishra",
+    "assignedTutorId": "tutor_chemistry_bhojpuri",
+    "gaps": ["Chemical equation balancing"],
+    "strengths": ["Reactant and product identification"],
+    "quizScore": 85,
+    "diagnostics": "Priya displays strong comprehension of base chemical concepts but struggles with complex stochiometric balancing of equations.",
+    "currentStepIndex": 2,
+    "dialect": "bhojpuri",
+    "pace": "slow",
+    "lessonPlan": [
+      "रासायनिक अभिक्रिया (Chemical Reactions) और समीकरण",
+      "अम्ल, क्षारक और लवण (Acids, Bases and Salts) का वर्गीकरण",
+      "धातु और अधातु के भौतिक गुण",
+      "आवर्त सारणी का सामान्य परिचय"
+    ]
+  },
+  {
+    "id": "student_rahul_verma",
+    "name": "Rahul Verma",
+    "assignedTutorId": "tutor_math_hindi",
+    "gaps": ["Trigonometric identity ratios"],
+    "strengths": ["Quadratic formula application"],
+    "quizScore": 90,
+    "diagnostics": "Rahul solved quadratic equation problems perfectly and understood arithmetic progressions. He needs minor practice with trigonometry ratios.",
+    "currentStepIndex": 3,
+    "dialect": "hindi",
+    "pace": "normal",
+    "lessonPlan": [
+      "द्विघात समीकरण (Quadratic Equations) का हल",
+      "समानांतर श्रेणी (Arithmetic Progression) के सूत्र",
+      "त्रिकोणमिति (Trigonometry) के बुनियादी अनुपात",
+      "सांख्यिकी (Statistics) में माध्य और माध्यिका की गणना"
+    ]
+  },
+  {
+    "id": "student_amit_singh",
+    "name": "Amit Singh",
+    "assignedTutorId": "",
     "gaps": [],
     "strengths": [],
     "quizScore": 0,
-    "diagnostics": "",
-    "currentStepIndex": 0
+    "diagnostics": "विद्यार्थी का प्रोफाइल अभी खाली है। ट्यूटर सत्र शुरू होने पर डायग्नोस्टिक्स रिपोर्ट यहाँ तैयार होगी।",
+    "currentStepIndex": 0,
+    "dialect": "hindi",
+    "pace": "normal",
+    "lessonPlan": []
   }
 ]

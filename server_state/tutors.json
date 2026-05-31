@@ -2,7 +2,7 @@
   {
     "id": "tutor_1779463635187",
     "name": "Bhoutik AI",
-    "instructions": "teach and asses a physics lesson plan for a 5th standard UP board circulum",
+    "instructions": "teach and assess a physics lesson plan for a 10th standard UP board curriculum",
     "lessonPlan": [
       "विराम और जड़त्व (Inertia) के नियम का परिचय (अवधी में)",
       "बल (Force) और त्वरण (Acceleration) का परिचय चित्र के साथ",
@@ -10,6 +10,58 @@
       "यूपी बोर्ड परीक्षा के प्रश्नों पर आधारित एक छोटा क्विज़"
     ],
     "dialect": "awadhi",
+    "pace": "normal"
+  },
+  {
+    "id": "tutor_chemistry_bhojpuri",
+    "name": "Rasayan AI",
+    "instructions": "teach and assess chemistry concepts using chemical equations and basic periodic table features in Bhojpuri",
+    "lessonPlan": [
+      "रासायनिक अभिक्रिया (Chemical Reactions) और समीकरण",
+      "अम्ल, क्षारक और लवण (Acids, Bases and Salts) का वर्गीकरण",
+      "धातु और अधातु के भौतिक गुण",
+      "आवर्त सारणी का सामान्य परिचय"
+    ],
+    "dialect": "bhojpuri",
+    "pace": "normal"
+  },
+  {
+    "id": "tutor_math_hindi",
+    "name": "Ganit AI",
+    "instructions": "teach algebra and simple interest problems using clear step-by-step math proofs in Hindi",
+    "lessonPlan": [
+      "द्विघात समीकरण (Quadratic Equations) का हल",
+      "समानांतर श्रेणी (Arithmetic Progression) के सूत्र",
+      "त्रिकोणमिति (Trigonometry) के बुनियादी अनुपात",
+      "सांख्यिकी (Statistics) में माध्य और माध्यिका की गणना"
+    ],
+    "dialect": "hindi",
+    "pace": "normal"
+  },
+  {
+    "id": "tutor_biology_awadhi",
+    "name": "Jeev AI",
+    "instructions": "explain cell structure and human circulatory system using rich visual board animations in Awadhi",
+    "lessonPlan": [
+      "कोशिका (Cell) की संरचना और प्रमुख अंगक",
+      "पौधों में प्रकाश संश्लेषण (Photosynthesis) की प्रक्रिया",
+      "मानव रक्त परिसंचरण तंत्र (Circulatory System) का परिचय",
+      "पारिस्थितिकी तंत्र (Ecosystem) और खाद्य श्रृंखला"
+    ],
+    "dialect": "awadhi",
+    "pace": "normal"
+  },
+  {
+    "id": "tutor_english_hindi",
+    "name": "Angrezi AI",
+    "instructions": "teach English grammar basics, active passive voice, and common vocabulary building exercises in Hindi/English mixed style",
+    "lessonPlan": [
+      "Tenses (काल) का परिचय और वाक्य संरचना",
+      "Active and Passive Voice के नियम",
+      "Direct and Indirect Speech में परिवर्तन",
+      "यूपी बोर्ड परीक्षा के लिए Reading Comprehension अभ्यास"
+    ],
+    "dialect": "hindi",
     "pace": "normal"
   }
 ]
