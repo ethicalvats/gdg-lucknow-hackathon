@@ -128,6 +128,7 @@ export default function App() {
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const [textInput, setTextInput] = useState("");
   const [transcript, setTranscript] = useState([
     {
@@ -1037,6 +1038,8 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
         };
         ws.current.send(JSON.stringify(setupMessage));
         logDebug("sent", "SETUP", setupMessage);
+        // Auto-start live voice streaming immediately after session connects
+        startMic();
       };
 
       ws.current.onmessage = async (event) => {
@@ -1095,6 +1098,7 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
       recorder.current = null;
     }
     setIsRecording(false);
+    setIsMuted(false);
 
     if (player.current) {
       player.current.close();
@@ -1256,45 +1260,39 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
     }
   };
 
-  const toggleRecording = async () => {
-    if (!connected) return;
+  // toggleRecording removed — live voice now uses startMic (auto-on connect) + toggleMute
 
-    if (isRecording) {
-      if (recorder.current) {
-        recorder.current.stop();
-        recorder.current = null;
+
+  // ─── LIVE VOICE-TO-VOICE HELPERS ──────────────────────────────────────────────────
+  // Auto-starts the mic and streams audio continuously to Gemini Live API.
+  // Called immediately after the WebSocket setup message is sent.
+  const startMic = async () => {
+    if (recorder.current) return; // already running
+    setError(null);
+    recorder.current = new AudioRecorder((base64Audio) => {
+      if (!recorder.current?._muted && ws.current && ws.current.readyState === WebSocket.OPEN) {
+        ws.current.send(JSON.stringify({
+          realtimeInput: { audio: { mimeType: "audio/pcm;rate=16000", data: base64Audio } },
+        }));
       }
+    });
+    try {
+      await recorder.current.start();
+      recorder.current._muted = false;
+      setIsRecording(true);
+      setIsMuted(false);
+    } catch (err) {
+      setError(`माइक्रोफ़ोन एक्सेस नहीं मिला: ${err.message}`);
       setIsRecording(false);
-      setTranscript((prev) => [
-        ...prev,
-        { sender: "user", text: "🎤 (संदेह बोल दिया गया है - AI जवाब दे रहा है)" },
-      ]);
-    } else {
-      setError(null);
-      player.current?.stop();
-      
-      recorder.current = new AudioRecorder((base64Audio) => {
-        if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-          const micMessage = {
-            realtimeInput: {
-              audio: {
-                mimeType: "audio/pcm;rate=16000",
-                data: base64Audio,
-              },
-            },
-          };
-          ws.current.send(JSON.stringify(micMessage));
-        }
-      });
-
-      try {
-        await recorder.current.start();
-        setIsRecording(true);
-      } catch (err) {
-        setError(`माइक्रोफ़ोन एक्सेस करने में विफल: ${err.message}`);
-        setIsRecording(false);
-      }
     }
+  };
+
+  // Mute/Unmute: silently pauses streaming without stopping the recorder.
+  const toggleMute = () => {
+    if (!connected || !recorder.current) return;
+    const nowMuted = !isMuted;
+    recorder.current._muted = nowMuted;
+    setIsMuted(nowMuted);
   };
 
   const handleSendText = (e) => {
@@ -2347,39 +2345,45 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
               ) : (
                 studentActiveTab !== "analytics" && (
                   <div className="dock-active-row">
-                    <div className="dock-actions">
-                      <button type="button" className="btn-quick-action proceed" onClick={triggerNextStep}>
-                        आगे बढ़ें (Next Step) 👉
-                      </button>
-                      <button type="button" className="btn-quick-action quiz" onClick={triggerQuiz}>
-                        📝 Take Quiz
-                      </button>
+                    {/* Live voice status indicator */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.8rem", color: isMuted ? "#71717a" : "#10b981", fontWeight: 500 }}>
+                      <span style={{
+                        display: "inline-block", width: "8px", height: "8px", borderRadius: "50%",
+                        background: isMuted ? "#71717a" : "#10b981",
+                        boxShadow: isMuted ? "none" : "0 0 6px #10b981",
+                        animation: isMuted ? "none" : "pulseGlow 1.5s infinite"
+                      }} />
+                      {isMuted ? "🔇 माइक म्यूट — Unmute करके बोलें" : "🎤 लाइव सत्र जारी — सीधे बोलें"}
                     </div>
-                    
-                    <div className="dock-mic-input-group">
+
+                    <div className="dock-actions">
                       <button
                         type="button"
-                        className={`btn-mic-dock ${isRecording ? "recording" : ""}`}
-                        onClick={toggleRecording}
-                        title={isRecording ? "Stop Recording" : "Start Voice Input"}
+                        className={`btn-quick-action ${isMuted ? "" : "proceed"}`}
+                        onClick={toggleMute}
+                        title={isMuted ? "Unmute microphone" : "Mute microphone"}
+                        style={isMuted ? { background: "#fef2f2", color: "#ef4444", borderColor: "#fca5a5" } : {}}
                       >
-                        {isRecording ? (
-                          <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-                            <rect x="6" y="6" width="12" height="12" rx="2" />
-                          </svg>
+                        {isMuted ? (
+                          <><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14" style={{ display: "inline", marginRight: "0.3rem" }}><path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z"/></svg>Unmute Mic</>
                         ) : (
-                          <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-                            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
-                            <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
-                          </svg>
+                          <><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14" style={{ display: "inline", marginRight: "0.3rem" }}><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>Mute Mic</>
                         )}
                       </button>
+                      <button type="button" className="btn-quick-action proceed" onClick={triggerNextStep}>
+                        आगे बढ़ें 👉
+                      </button>
+                      <button type="button" className="btn-quick-action" onClick={triggerQuiz}>
+                        📝 Quiz
+                      </button>
+                    </div>
 
+                    <div className="dock-mic-input-group">
                       <form onSubmit={handleSendText} className="dock-text-form">
                         <input
                           type="text"
                           className="input-key dock-text-input"
-                          placeholder="अपना संदेह यहाँ टाइप करें..."
+                          placeholder="या यहाँ टाइप करके पूछें..."
                           value={textInput}
                           onChange={(e) => setTextInput(e.target.value)}
                         />
