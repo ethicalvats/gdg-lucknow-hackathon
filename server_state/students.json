@@ -3,10 +3,12 @@
     "id": "student_1779463652745",
     "name": "Vikas Yadav",
     "assignedTutorId": "tutor_1779463635187",
-    "gaps": ["Inertia sign convention confusion"],
-    "strengths": ["Newton's 1st Law definition"],
-    "quizScore": 75,
-    "diagnostics": "छात्र जड़त्व के नियम को समझता है लेकिन दिशा के संकेत में थोड़ा भ्रमित है। त्वरित सुधार की आवश्यकता है।",
+    "gaps": [],
+    "strengths": [
+      "Inertia concept"
+    ],
+    "quizScore": 0,
+    "diagnostics": "Student understood the concept of Inertia. Moving to Step 2: Force and Acceleration.",
     "currentStepIndex": 1,
     "dialect": "awadhi",
     "pace": "normal",
@@ -21,8 +23,12 @@
     "id": "student_priya_mishra",
     "name": "Priya Mishra",
     "assignedTutorId": "tutor_chemistry_bhojpuri",
-    "gaps": ["Chemical equation balancing"],
-    "strengths": ["Reactant and product identification"],
+    "gaps": [
+      "Chemical equation balancing"
+    ],
+    "strengths": [
+      "Reactant and product identification"
+    ],
     "quizScore": 85,
     "diagnostics": "Priya displays strong comprehension of base chemical concepts but struggles with complex stochiometric balancing of equations.",
     "currentStepIndex": 2,
@@ -39,8 +45,12 @@
     "id": "student_rahul_verma",
     "name": "Rahul Verma",
     "assignedTutorId": "tutor_math_hindi",
-    "gaps": ["Trigonometric identity ratios"],
-    "strengths": ["Quadratic formula application"],
+    "gaps": [
+      "Trigonometric identity ratios"
+    ],
+    "strengths": [
+      "Quadratic formula application"
+    ],
     "quizScore": 90,
     "diagnostics": "Rahul solved quadratic equation problems perfectly and understood arithmetic progressions. He needs minor practice with trigonometry ratios.",
     "currentStepIndex": 3,

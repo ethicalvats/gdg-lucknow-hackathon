@@ -72,7 +72,8 @@ export default function App() {
   const [saveStatus, setSaveStatus] = useState("");
   const [error, setError] = useState(null);
   const [coordinatorActiveTab, setCoordinatorActiveTab] = useState("dashboard");
-  const [syllabusCollapsed, setSyllabusCollapsed] = useState(false);
+  const [syllabusCollapsed, setSyllabusCollapsed] = useState(true); // collapsed by default for more blackboard space
+  const [showChat, setShowChat] = useState(false); // chat panel hidden by default
 
   function logDebug(direction, type, data) {
     const time = new Date().toLocaleTimeString();
@@ -2025,10 +2026,10 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
     // 3B. Classroom view: If studentId is specified
     if (!activeStudent) {
       return (
-        <div className="app-container" style={{ justifyContent: "center", alignItems: "center" }}>
-          <div className="glass-panel" style={{ width: "400px", padding: "2rem", textAlign: "center" }}>
+        <div className="app-container" style={{ justifyContent: "center", alignItems: "center", background: "#05050e" }}>
+          <div style={{ textAlign: "center", color: "#a1a1aa" }}>
             <span style={{ fontSize: "3rem" }}>⏱️</span>
-            <h3>लोड हो रहा है...</h3>
+            <h3 style={{ color: "#f4f4f5" }}>लोड हो रहा है...</h3>
             <p>विद्यार्थी रिकॉर्ड प्राप्त किया जा रहा है।</p>
           </div>
         </div>
@@ -2036,408 +2037,226 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
     }
 
     return (
-      <div className="app-container">
-        <header className="app-header">
-          <div>
-            <h1 className="clickable-title" onClick={() => navigateTo("/")}>🎓 Vernacular Student Classroom</h1>
-            <p>{activeDialect === "awadhi" ? "अवधी" : activeDialect === "bhojpuri" ? "भोजपुरी" : "हिंदी"} AI {assignedTutor ? assignedTutor.subject : "विषय"} ट्यूटर हब — संवादात्मक पाठशाला</p>
-          </div>
-          
-          <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-            <button className="btn-back-home" onClick={() => navigateTo("/student")}>
-              🔙 Switch Student
-            </button>
+      <div className="app-container" style={{ padding: 0, gap: 0, background: "#05050e" }}>
+        {/* Slim classroom header */}
+        <header className="classroom-header">
+          <div className="classroom-header-left">
+            <span className="classroom-title" onClick={() => navigateTo("/")}>🎓 Vernacular Classroom</span>
             <div className="status-badge">
               <div className={`status-dot ${connected ? "connected" : connecting ? "connecting" : ""}`} />
-              {connected ? "लाइव कक्षा" : connecting ? "कनेक्ट हो रहा है..." : "क्लास बंद है"}
+              {connected ? "लाइव" : connecting ? "कनेक्ट..." : "ऑफलाइन"}
             </div>
+          </div>
+          <div className="classroom-header-right">
+            <button
+              type="button"
+              className={`btn-panel-toggle ${!syllabusCollapsed ? "active" : ""}`}
+              onClick={() => setSyllabusCollapsed(!syllabusCollapsed)}
+            >
+              📖 Syllabus
+            </button>
+            <button
+              type="button"
+              className={`btn-panel-toggle ${showChat ? "active" : ""}`}
+              onClick={() => setShowChat(v => !v)}
+            >
+              💬 Chat
+            </button>
+            <button className="btn-back-home" onClick={() => navigateTo("/student")} style={{ fontSize: "0.75rem", padding: "0.3rem 0.6rem" }}>
+              ↩ Student
+            </button>
           </div>
         </header>
 
         {error && <div className="alert-error">⚠️ {error}</div>}
 
+        {/* Main classroom area */}
         <div className="student-classroom-wrapper">
-          {/* Left Panel: Collapsible Syllabus/Roadmap */}
-          <aside className={`student-syllabus-panel ${syllabusCollapsed ? "collapsed" : ""}`}>
-            <div className="syllabus-header">
-              <h3>📖 Checklist ({progressPercent}%)</h3>
-              <button 
-                type="button"
-                className="btn-collapse-syllabus" 
-                onClick={() => setSyllabusCollapsed(!syllabusCollapsed)}
-                title={syllabusCollapsed ? "Expand Syllabus" : "Collapse Syllabus"}
-              >
-                {syllabusCollapsed ? "➡️" : "⬅️"}
-              </button>
+          {/* Left: Syllabus Overlay */}
+          <div className={`classroom-overlay-panel left-panel ${syllabusCollapsed ? "hidden" : ""}`}>
+            <div className="overlay-panel-header">
+              <h3>📖 Syllabus ({progressPercent}%)</h3>
+              <button type="button" className="btn-close-panel" onClick={() => setSyllabusCollapsed(true)}>✕</button>
             </div>
-            
-            {!syllabusCollapsed && (
-              <div className="syllabus-content">
-                <div className="roadmap-checklist">
-                  {activePlanSteps.length === 0 ? (
-                    <p className="no-data-text">कोई पाठ चरण असाइन नहीं किया गया है।</p>
-                  ) : (
-                    activePlanSteps.map((step, idx) => {
-                      let itemClass = "upcoming";
-                      let icon = "⏱️";
-                      if (idx === studentCurrentStep) {
-                        itemClass = "active";
-                        icon = "⚡";
-                      } else if (idx < studentCurrentStep) {
-                        itemClass = "completed";
-                        icon = "✅";
-                      }
-                      return (
-                        <div key={idx} className={`checklist-item ${itemClass}`}>
-                          <span className="checklist-icon">{icon}</span>
-                          <span className="checklist-text">{step}</span>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
+            <div className="overlay-syllabus-content">
+              <div className="roadmap-checklist">
+                {activePlanSteps.length === 0 ? (
+                  <p className="no-data-text">कोई पाठ चरण असाइन नहीं किया गया है।</p>
+                ) : (
+                  activePlanSteps.map((step, idx) => {
+                    let itemClass = "upcoming";
+                    let icon = "⏱️";
+                    if (idx === studentCurrentStep) { itemClass = "active"; icon = "⚡"; }
+                    else if (idx < studentCurrentStep) { itemClass = "completed"; icon = "✅"; }
+                    return (
+                      <div key={idx} className={`checklist-item ${itemClass}`}>
+                        <span className="checklist-icon">{icon}</span>
+                        <span className="checklist-text">{step}</span>
+                      </div>
+                    );
+                  })
+                )}
               </div>
-            )}
-          </aside>
-
-          {/* Center Panel: Blackboard & Active Content */}
-          <section className="student-center-panel">
-            <div className="center-panel-header">
-              <h2>
-                {studentActiveTab === "analytics"
-                  ? "📈 My Progress & Analytics"
-                  : activeQuiz 
-                    ? "✍️ Interactive Quiz (प्रश्नोत्तरी)" 
-                    : `📋 Blackboard: ${visualCode ? visualCode.title : "इंटरेक्टिव बोर्ड"}`
-                }
-              </h2>
-              <button 
-                type="button"
-                className="btn-analytics-toggle" 
-                onClick={() => setStudentActiveTab(studentActiveTab === "analytics" ? "classroom" : "analytics")}
-              >
-                {studentActiveTab === "analytics" ? "📺 View Classroom" : "📈 View Progress"}
-              </button>
             </div>
+          </div>
 
-            <div className="center-panel-content">
-              {studentActiveTab === "analytics" ? (
-                <div className="analytics-tab-content" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-                  {/* Progress Meter */}
-                  <div className="dashboard-progress-section">
-                    <div className="progress-labels">
-                      <span>📖 Course Progress</span>
-                      <span>{progressPercent}%</span>
-                    </div>
-                    <div className="progress-track-bg">
-                      <div className="progress-fill" style={{ width: `${progressPercent}%` }} />
-                    </div>
-                    <p className="active-step-hint">
-                      <strong>Current Step:</strong> {activePlanSteps[studentCurrentStep] || "None"}
-                    </p>
+          {/* Center: Full-screen blackboard */}
+          <div className="blackboard-fullscreen">
+            {studentActiveTab === "analytics" ? (
+              /* Analytics overlay */
+              <div className="analytics-overlay">
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <h2>📈 My Progress</h2>
+                  <button type="button" className="btn-panel-toggle" onClick={() => setStudentActiveTab("classroom")}>
+                    ← Back to Blackboard
+                  </button>
+                </div>
+
+                <div className="dashboard-progress-section">
+                  <div className="progress-labels">
+                    <span>Course Progress</span>
+                    <span>{progressPercent}%</span>
                   </div>
-
-                  {/* Score & performance grade */}
-                  <div style={{ display: "flex", gap: "1.25rem", alignItems: "center" }}>
-                    {(() => {
-                      let borderCol = "#06b6d4";
-                      let textCol = "#06b6d4";
-                      let shadowVal = "0 0 15px rgba(6, 182, 212, 0.3)";
-
-                      if (studentQuizScore >= 80) {
-                        borderCol = "#10b981";
-                        textCol = "#10b981";
-                        shadowVal = "0 0 15px rgba(16, 185, 129, 0.3)";
-                      } else if (studentQuizScore < 50) {
-                        borderCol = "#ef4444";
-                        textCol = "#ef4444";
-                        shadowVal = "0 0 15px rgba(239, 68, 68, 0.3)";
-                      }
-
-                      return (
-                        <div 
-                          className="quiz-score-circle" 
-                          style={{ 
-                            borderColor: borderCol,
-                            boxShadow: shadowVal 
-                          }}
-                        >
-                          <span className="score-val" style={{ color: textCol }}>{studentQuizScore}</span>
-                          <span className="score-lbl">Quiz Score</span>
-                        </div>
-                      );
-                    })()}
-
-                    <div>
-                      <h4 style={{ margin: "0 0 0.25rem 0", fontSize: "1.1rem" }}>
-                        Status:{" "}
-                        <span 
-                          style={{ 
-                            color: studentQuizScore >= 80 ? "#10b981" : studentQuizScore < 50 ? "#ef4444" : "#06b6d4",
-                            fontWeight: "bold"
-                          }}
-                        >
-                          {studentQuizScore >= 80 ? "Mastered (पूर्ण दक्षता)" : studentQuizScore < 50 ? "Needs Focus (विशेष ध्यान दें)" : "Progressing (प्रगति पर)"}
-                        </span>
-                      </h4>
-                      <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                        Based on your latest interactive quiz performance.
-                      </p>
-                    </div>
+                  <div className="progress-track-bg">
+                    <div className="progress-fill" style={{ width: `${progressPercent}%` }} />
                   </div>
+                  <p className="active-step-hint"><strong>Current:</strong> {activePlanSteps[studentCurrentStep] || "None"}</p>
+                </div>
 
-                  {/* Strengths & Gaps */}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                    <div className="diagnostics-card">
-                      <h3>🟢 Mastered Strengths</h3>
-                      {studentStrengths.length === 0 ? (
-                        <p className="no-data-text">No concepts mastered yet.</p>
-                      ) : (
-                        <div className="badges-container">
-                          {studentStrengths.map((str, idx) => (
-                            <span key={idx} className="badge strength-badge">{str}</span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="diagnostics-card">
-                      <h3>🔴 Learning Gaps</h3>
-                      {studentGaps.length === 0 ? (
-                        <p className="no-data-text">No gaps identified yet.</p>
-                      ) : (
-                        <div className="badges-container">
-                          {studentGaps.map((gap, idx) => (
-                            <span key={idx} className="badge gap-badge">{gap}</span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* AI Recommendations */}
-                  <div className="diagnostics-card flex-grow-card">
-                    <h3>💡 Personalized AI Recommendations</h3>
-                    <div className="summary-text-box" style={{ maxHeight: "none" }}>
-                      {studentDiagnostics || "Recommendations will generate once session starts."}
-                    </div>
+                <div style={{ display: "flex", gap: "1.25rem", alignItems: "center" }}>
+                  {(() => {
+                    const col = studentQuizScore >= 80 ? "#10b981" : studentQuizScore < 50 ? "#ef4444" : "#06b6d4";
+                    return (
+                      <div className="quiz-score-circle" style={{ borderColor: col, boxShadow: `0 0 14px ${col}40` }}>
+                        <span className="score-val" style={{ color: col }}>{studentQuizScore}</span>
+                        <span className="score-lbl">Quiz</span>
+                      </div>
+                    );
+                  })()}
+                  <div>
+                    <h4 style={{ margin: "0 0 0.25rem", fontSize: "0.95rem", color: "#f4f4f5" }}>
+                      {studentQuizScore >= 80 ? "✅ Mastered" : studentQuizScore < 50 ? "⚠️ Needs Focus" : "📈 Progressing"}
+                    </h4>
+                    <p style={{ margin: 0, fontSize: "0.78rem", color: "#71717a" }}>Based on quiz performance</p>
                   </div>
                 </div>
-              ) : (
-                /* Blackboard active quiz or simulation */
-                <div className="blackboard-workspace">
-                  {activeQuiz ? (
-                    <div className="quiz-card-box">
-                      <div className="quiz-question-container">
-                        <span className="quiz-icon">❓</span>
-                        <p className="quiz-question-text">{activeQuiz.question}</p>
-                      </div>
-                      
-                      <div className="quiz-options-list">
-                        {activeQuiz.options.map((option, idx) => {
-                          const isSelected = activeQuiz.selectedOptionIndex === idx;
-                          const isCorrect = idx === activeQuiz.correctOptionIndex;
-                          let btnClass = "quiz-option-btn";
-                          
-                          if (activeQuiz.submitted) {
-                            if (isCorrect) {
-                              btnClass += " correct-option";
-                            } else if (isSelected) {
-                              btnClass += " incorrect-option";
-                            } else {
-                              btnClass += " disabled-option";
-                            }
-                          } else if (isSelected) {
-                            btnClass += " selected-option";
-                          }
-                          
-                          return (
-                            <button
-                              key={idx}
-                              type="button"
-                              className={btnClass}
-                              disabled={activeQuiz.submitted}
-                              onClick={() => handleSelectQuizOption(idx)}
-                            >
-                              <span className="option-letter">{String.fromCharCode(65 + idx)}.</span>
-                              <span className="option-text">{option}</span>
-                              {activeQuiz.submitted && isCorrect && <span className="feedback-icon">✅</span>}
-                              {activeQuiz.submitted && isSelected && !isCorrect && <span className="feedback-icon">❌</span>}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      
-                      {activeQuiz.submitted && (
-                        <div className="quiz-feedback-box animate-fade-in">
-                          <p className={`quiz-feedback-status ${activeQuiz.selectedOptionIndex === activeQuiz.correctOptionIndex ? "status-success" : "status-error"}`}>
-                            {activeQuiz.selectedOptionIndex === activeQuiz.correctOptionIndex 
-                              ? "🎉 बिल्कुल सही उत्तर! (Correct)" 
-                              : "⚠️ गलत उत्तर! (Incorrect)"
-                            }
-                          </p>
-                          <p className="quiz-explanation-text">
-                            <strong>स्पष्टीकरण:</strong> {activeQuiz.explanation}
-                          </p>
-                          <button 
-                            type="button"
-                            className="btn-connect" 
-                            style={{ marginTop: "1rem", alignSelf: "flex-end" }}
-                            onClick={() => setActiveQuiz(null)}
-                          >
-                            🔙 Back to Blackboard
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ) : visualCode ? (
-                    <VisualBoard visualCode={visualCode} />
-                  ) : (
-                    <div className="blackboard-empty">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-                        <rect x="3" y="3" width="18" height="18" rx="2" />
-                        <path d="M9 17l3-3 3 3" />
-                        <path d="M9 7h6" />
-                        <path d="M9 11h6" />
-                      </svg>
-                      <h3>ब्लैकबोर्ड खाली है</h3>
-                      <p>ट्यूटर से {assignedTutor ? assignedTutor.subject : "विषय"} का कोई नियम पूछें। ट्यूटर समझाने के लिए यहाँ एक जीवंत एनीमेशन बनाएगा।</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
 
-            {/* Floating controls dock at the bottom of the Center Panel */}
-            <div className="student-controls-dock">
-              {!connected ? (
-                <div className="classroom-init-settings glass-panel" style={{ width: "100%", padding: "1rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem", alignItems: "center" }}>
-                    <div className="student-badge-info" style={{ fontSize: "0.95rem" }}>
-                      👤 Student: <strong>{activeStudent.name}</strong>
-                    </div>
-                    {assignedTutor ? (
-                      <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
-                        <div className="settings-group" style={{ margin: 0 }}>
-                          <select className="input-key select-custom select-inline" value={activeDialect} onChange={(e) => setActiveDialect(e.target.value)}>
-                            <option value="awadhi">Awadhi (अवधी)</option>
-                            <option value="bhojpuri">Bhojpuri (भोजपुरी)</option>
-                            <option value="hindi">Hindi (हिंदी)</option>
-                            <option value="auto">Auto-Adapt</option>
-                          </select>
-                        </div>
-                        <div className="settings-group" style={{ margin: 0 }}>
-                          <select className="input-key select-custom select-inline" value={activePace} onChange={(e) => setActivePace(e.target.value)}>
-                            <option value="slow">Slow</option>
-                            <option value="normal">Normal</option>
-                            <option value="fast">Fast</option>
-                          </select>
-                        </div>
-                        <button type="button" className="btn-connect" onClick={connectSession} disabled={connecting} style={{ padding: "0.5rem 1rem" }}>
-                          {connecting ? "Connecting..." : "🚀 Start Classroom"}
-                        </button>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                  <div className="diagnostics-card">
+                    <h3>🟢 Strengths</h3>
+                    {studentStrengths.length === 0 ? <p className="no-data-text">None yet.</p> : (
+                      <div className="badges-container">
+                        {studentStrengths.map((s, i) => <span key={i} className="badge strength-badge">{s}</span>)}
                       </div>
-                    ) : (
-                      <span className="no-tutor-warn">⚠️ No Tutor Assigned</span>
+                    )}
+                  </div>
+                  <div className="diagnostics-card">
+                    <h3>🔴 Gaps</h3>
+                    {studentGaps.length === 0 ? <p className="no-data-text">None identified.</p> : (
+                      <div className="badges-container">
+                        {studentGaps.map((g, i) => <span key={i} className="badge gap-badge">{g}</span>)}
+                      </div>
                     )}
                   </div>
                 </div>
-              ) : (
-                studentActiveTab !== "analytics" && (
-                  <div className="dock-active-row">
-                    {/* Live voice status indicator */}
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.8rem", color: isMuted ? "#71717a" : "#10b981", fontWeight: 500 }}>
-                      <span style={{
-                        display: "inline-block", width: "8px", height: "8px", borderRadius: "50%",
-                        background: isMuted ? "#71717a" : "#10b981",
-                        boxShadow: isMuted ? "none" : "0 0 6px #10b981",
-                        animation: isMuted ? "none" : "pulseGlow 1.5s infinite"
-                      }} />
-                      {isMuted ? "🔇 माइक म्यूट — Unmute करके बोलें" : "🎤 लाइव सत्र जारी — सीधे बोलें"}
-                    </div>
 
-                    <div className="dock-actions">
-                      <button
-                        type="button"
-                        className={`btn-quick-action ${isMuted ? "" : "proceed"}`}
-                        onClick={toggleMute}
-                        title={isMuted ? "Unmute microphone" : "Mute microphone"}
-                        style={isMuted ? { background: "#fef2f2", color: "#ef4444", borderColor: "#fca5a5" } : {}}
-                      >
-                        {isMuted ? (
-                          <><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14" style={{ display: "inline", marginRight: "0.3rem" }}><path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z"/></svg>Unmute Mic</>
-                        ) : (
-                          <><svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14" style={{ display: "inline", marginRight: "0.3rem" }}><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>Mute Mic</>
-                        )}
-                      </button>
-                      <button type="button" className="btn-quick-action proceed" onClick={triggerNextStep}>
-                        आगे बढ़ें 👉
-                      </button>
-                      <button type="button" className="btn-quick-action" onClick={triggerQuiz}>
-                        📝 Quiz
-                      </button>
-                    </div>
-
-                    <div className="dock-mic-input-group">
-                      <form onSubmit={handleSendText} className="dock-text-form">
-                        <input
-                          type="text"
-                          className="input-key dock-text-input"
-                          placeholder="या यहाँ टाइप करके पूछें..."
-                          value={textInput}
-                          onChange={(e) => setTextInput(e.target.value)}
-                        />
-                        <button type="submit" className="btn-send-dock">भेजें</button>
-                      </form>
-                    </div>
+                <div className="diagnostics-card">
+                  <h3>💡 AI Recommendations</h3>
+                  <div className="summary-text-box">{studentDiagnostics || "Recommendations will generate once session starts."}</div>
+                </div>
+              </div>
+            ) : activeQuiz ? (
+              /* Quiz on blackboard */
+              <div className="blackboard-quiz-overlay">
+                <div className="quiz-card-box">
+                  <div className="quiz-question-container">
+                    <span className="quiz-icon">❓</span>
+                    <p className="quiz-question-text">{activeQuiz.question}</p>
                   </div>
-                )
-              )}
-            </div>
-          </section>
+                  <div className="quiz-options-list">
+                    {activeQuiz.options.map((option, idx) => {
+                      const isSelected = activeQuiz.selectedOptionIndex === idx;
+                      const isCorrect = idx === activeQuiz.correctOptionIndex;
+                      let btnClass = "quiz-option-btn";
+                      if (activeQuiz.submitted) {
+                        btnClass += isCorrect ? " correct-option" : isSelected ? " incorrect-option" : " disabled-option";
+                      } else if (isSelected) {
+                        btnClass += " selected-option";
+                      }
+                      return (
+                        <button key={idx} type="button" className={btnClass} disabled={activeQuiz.submitted} onClick={() => handleSelectQuizOption(idx)}>
+                          <span className="option-letter">{String.fromCharCode(65 + idx)}.</span>
+                          <span className="option-text">{option}</span>
+                          {activeQuiz.submitted && isCorrect && <span className="feedback-icon">✅</span>}
+                          {activeQuiz.submitted && isSelected && !isCorrect && <span className="feedback-icon">❌</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {activeQuiz.submitted && (
+                    <div className="quiz-feedback-box animate-fade-in">
+                      <p className={`quiz-feedback-status ${activeQuiz.selectedOptionIndex === activeQuiz.correctOptionIndex ? "status-success" : "status-error"}`}>
+                        {activeQuiz.selectedOptionIndex === activeQuiz.correctOptionIndex ? "🎉 सही उत्तर! (Correct)" : "⚠️ गलत उत्तर! (Incorrect)"}
+                      </p>
+                      <p className="quiz-explanation-text"><strong>स्पष्टीकरण:</strong> {activeQuiz.explanation}</p>
+                      <button type="button" className="btn-toolbar primary" style={{ alignSelf: "flex-end", marginTop: "0.5rem" }} onClick={() => setActiveQuiz(null)}>
+                        🔙 Back to Blackboard
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : visualCode ? (
+              <VisualBoard visualCode={visualCode} />
+            ) : (
+              <div className="blackboard-empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+                  <rect x="2" y="3" width="20" height="14" rx="2" />
+                  <path d="M8 21h8M12 17v4" />
+                </svg>
+                <h3>ब्लैकबोर्ड खाली है</h3>
+                <p>
+                  {!connected
+                    ? "नीचे Start Classroom दबाएँ और अपने AI Tutor से बातचीत शुरू करें।"
+                    : `${assignedTutor ? assignedTutor.name : "AI Tutor"} से ${assignedTutor ? assignedTutor.subject : "विषय"} का कोई नियम पूछें — ट्यूटर यहाँ एनीमेशन बनाएगा।`
+                  }
+                </p>
+              </div>
+            )}
+          </div>
 
-          {/* Right Panel: Conversation Feed & Avatar */}
-          <aside className="student-interaction-panel">
-            <div className="interaction-header">
+          {/* Right: Chat Overlay */}
+          <div className={`classroom-overlay-panel right-panel ${showChat ? "" : "hidden"}`}>
+            <div className="overlay-panel-header">
               <h3>🗣️ AI Tutor</h3>
-              {connected && (
-                <button type="button" className="btn-close-session" onClick={disconnectSession}>
-                  🔌 Close Session
-                </button>
-              )}
+              <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                {connected && (
+                  <button type="button" className="btn-toolbar danger" style={{ fontSize: "0.68rem", padding: "0.2rem 0.4rem" }} onClick={disconnectSession}>
+                    🔌 End
+                  </button>
+                )}
+                <button type="button" className="btn-close-panel" onClick={() => setShowChat(false)}>✕</button>
+              </div>
             </div>
-
-            {/* Avatar Widget inside sidebar */}
-            <div className="avatar-widget-container glass-panel">
-              <div className="avatar-container">
+            <div className="overlay-chat-content">
+              {/* Tutor identity row */}
+              <div className="overlay-avatar-row">
                 <div className={`avatar-outer ${connected ? "active" : ""}`}>
-                  <div className="visualizer-rings" />
-                  <div className={`avatar-core ${isRecording ? "recording" : connected ? "speaking" : ""}`}>
-                    <div className="avatar-icon-glow" />
-                    <span style={{ fontSize: "2.2rem" }}>🪐</span>
+                  <span className="avatar-core">🪐</span>
+                </div>
+                <div className="tutor-info-col">
+                  <div className="tutor-name-label">
+                    {assignedTutor ? assignedTutor.name : "Vernacular AI Tutor"}
+                    <span className="dialect-badge">{activeDialect === "awadhi" ? "अवधी" : activeDialect === "bhojpuri" ? "भोजपुरी" : "हिंदी"}</span>
                   </div>
                 </div>
+                {connected && (
+                  <div className="speech-waves">
+                    {[0,1,2,3,4].map(i => <span key={i} />)}
+                  </div>
+                )}
               </div>
-              
-              {connected && (
-                <div className="speech-waves">
-                  <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
-                  <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
-                  <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
-                  <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
-                  <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
-                </div>
-              )}
-              
-              <div className="tutor-name-label">
-                <strong>{assignedTutor ? assignedTutor.name : "Vernacular AI Tutor"}</strong>
-                <span className="dialect-badge">{activeDialect === "awadhi" ? "अवधी" : activeDialect === "bhojpuri" ? "भोजपुरी" : "हिंदी"}</span>
-              </div>
-            </div>
-
-            {/* Conversational Transcript Feed */}
-            <div className="transcript-panel">
-              <h3>चर्चा इतिहास (Chat History)</h3>
+              {/* Transcript */}
               <div className="transcript-area">
                 {transcript.map((msg, i) => (
                   <div key={i} className={`msg ${msg.sender}`}>
@@ -2448,12 +2267,88 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
                 <div ref={transcriptEndRef} />
               </div>
             </div>
-          </aside>
+          </div>
+
+          {/* Bottom Toolbar */}
+          <div className="classroom-toolbar">
+            {!connected ? (
+              <div className="toolbar-connect-row">
+                <span className="toolbar-student-info">👤 <strong>{activeStudent.name}</strong></span>
+                {assignedTutor ? (
+                  <>
+                    <select className="toolbar-select" value={activeDialect} onChange={e => setActiveDialect(e.target.value)}>
+                      <option value="awadhi">अवधी</option>
+                      <option value="bhojpuri">भोजपुरी</option>
+                      <option value="hindi">हिंदी</option>
+                      <option value="auto">Auto</option>
+                    </select>
+                    <select className="toolbar-select" value={activePace} onChange={e => setActivePace(e.target.value)}>
+                      <option value="slow">Slow</option>
+                      <option value="normal">Normal</option>
+                      <option value="fast">Fast</option>
+                    </select>
+                    <button type="button" className="btn-toolbar primary" onClick={connectSession} disabled={connecting}>
+                      {connecting ? "Connecting..." : "🚀 Start Classroom"}
+                    </button>
+                  </>
+                ) : (
+                  <span style={{ color: "#f87171", fontSize: "0.8rem" }}>⚠️ No Tutor Assigned</span>
+                )}
+                <button type="button" className="btn-toolbar" onClick={() => setStudentActiveTab(studentActiveTab === "analytics" ? "classroom" : "analytics")} style={{ marginLeft: "auto" }}>
+                  {studentActiveTab === "analytics" ? "📺 Blackboard" : "📈 Progress"}
+                </button>
+              </div>
+            ) : (
+              <div className="toolbar-live-row">
+                {/* Live status dot */}
+                <div className="toolbar-live-indicator">
+                  <span className={`toolbar-live-dot ${isMuted ? "muted" : ""}`} />
+                  {isMuted ? "Muted" : "Live"}
+                </div>
+
+                <div className="toolbar-actions">
+                  <button
+                    type="button"
+                    className={`btn-toolbar ${isMuted ? "muted" : ""}`}
+                    onClick={toggleMute}
+                    title={isMuted ? "Unmute" : "Mute"}
+                  >
+                    {isMuted ? (
+                      <><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z"/></svg> Unmute</>
+                    ) : (
+                      <><svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg> Mute</>
+                    )}
+                  </button>
+                  <button type="button" className="btn-toolbar" onClick={triggerNextStep}>
+                    आगे 👉
+                  </button>
+                  <button type="button" className="btn-toolbar" onClick={triggerQuiz}>
+                    📝 Quiz
+                  </button>
+                  <button type="button" className="btn-toolbar" onClick={() => setStudentActiveTab(studentActiveTab === "analytics" ? "classroom" : "analytics")}>
+                    {studentActiveTab === "analytics" ? "📺 Board" : "📈 Stats"}
+                  </button>
+                </div>
+
+                {/* Text input */}
+                <form onSubmit={handleSendText} className="toolbar-text-form">
+                  <input
+                    type="text"
+                    className="toolbar-text-input"
+                    placeholder="यहाँ टाइप करके पूछें..."
+                    value={textInput}
+                    onChange={e => setTextInput(e.target.value)}
+                  />
+                  <button type="submit" className="btn-toolbar-send">भेजें</button>
+                </form>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="debug-toggle-container">
-          <button className="btn-debug-toggle" onClick={() => setShowDebug(!showDebug)}>
-            {showDebug ? "🛠️ Hide Debug Console" : "🛠️ Show Debug Console"}
+          <button className="btn-debug-toggle" onClick={() => setShowDebug(!showDebug)} style={{ fontSize: "0.72rem", color: "#52525b" }}>
+            {showDebug ? "🛠️ Hide Debug" : "🛠️ Debug"}
           </button>
         </div>
 
@@ -2469,25 +2364,19 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
                 )}
               </div>
               <div style={{ display: "flex", gap: "0.5rem" }}>
-                <button className="btn-clear-debug" style={{ borderColor: "var(--accent-secondary)", color: "#a5f3fc" }} onClick={() => saveLogsToFile(debugLogs)} disabled={debugLogs.length === 0}>
-                  💾 Save Logs
-                </button>
-                <button className="btn-clear-debug" style={{ borderColor: "var(--accent-primary)", color: "#93c5fd" }} onClick={downloadLogs} disabled={debugLogs.length === 0}>
-                  📥 Download JSON
-                </button>
-                <button className="btn-clear-debug" onClick={clearLogs}>
-                  🧹 Clear Logs
-                </button>
+                <button className="btn-clear-debug" style={{ borderColor: "var(--accent-secondary)", color: "#a5f3fc" }} onClick={() => saveLogsToFile(debugLogs)} disabled={debugLogs.length === 0}>💾 Save</button>
+                <button className="btn-clear-debug" style={{ borderColor: "var(--accent-primary)", color: "#93c5fd" }} onClick={downloadLogs} disabled={debugLogs.length === 0}>📥 JSON</button>
+                <button className="btn-clear-debug" onClick={clearLogs}>🧹 Clear</button>
               </div>
             </div>
             <div className="debug-log-list">
               {debugLogs.length === 0 ? (
-                <div className="debug-empty">No API transactions logged yet. Connect to start session.</div>
+                <div className="debug-empty">No API transactions logged yet.</div>
               ) : (
                 debugLogs.map((log) => (
                   <div key={log.id} className={`debug-log-item ${log.direction}`}>
                     <div style={{ display: "flex", alignItems: "center", marginBottom: "0.25rem" }}>
-                       <span className="debug-time">{log.time}</span>
+                      <span className="debug-time">{log.time}</span>
                       <span className={`debug-badge ${log.direction}`}>{log.direction}</span>
                       <strong style={{ fontSize: "0.85rem", color: "var(--text-primary)" }}>{log.type}</strong>
                     </div>

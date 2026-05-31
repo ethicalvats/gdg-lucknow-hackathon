@@ -781,207 +781,32 @@
 
 
 /* ==========================================================================
-   7. STUDENT IMMERSIVE CLASSROOM (Three-Panel Design)
+   7. STUDENT IMMERSIVE CLASSROOM — Blackboard-First Fullscreen Layout
    ========================================================================== */
+
+/* ── Outer shell: fills remaining viewport below app-header ── */
 .student-classroom-wrapper {
-  display: grid;
-  grid-template-columns: auto 1fr 320px;
-  gap: 1.25rem;
-  flex-grow: 1;
-  min-height: 0;
-  height: calc(100vh - 120px);
-  background: #ffffff;
-}
-
-/* 7A. Left Panel: Syllabus Checklist */
-.student-syllabus-panel {
-  width: 260px;
-  background: #f9f9fb;
-  border: 1px solid #e4e4e7;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.student-syllabus-panel.collapsed {
-  width: 50px;
-}
-
-.syllabus-header {
-  padding: 0.75rem;
-  border-bottom: 1px solid #e4e4e7;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #ffffff;
-}
-
-.syllabus-header h3 {
-  font-size: 0.85rem;
-  font-weight: 600;
-  margin: 0;
-  color: #18181b;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.student-syllabus-panel.collapsed .syllabus-header h3 {
-  display: none;
-}
-
-.btn-collapse-syllabus {
-  background: #ffffff;
-  border: 1px solid #e4e4e7;
-  border-radius: 4px;
-  color: #18181b;
-  padding: 0.2rem 0.4rem;
-  cursor: pointer;
-  font-size: 0.75rem;
-  transition: all 0.15s;
-}
-
-.btn-collapse-syllabus:hover {
-  background: #f4f4f5;
-  border-color: #4f46e5;
-}
-
-.syllabus-content {
-  padding: 0.75rem;
-  overflow-y: auto;
-  flex-grow: 1;
-}
-
-.student-syllabus-panel.collapsed .syllabus-content {
-  display: none;
-}
-
-/* Checklist Roadmap List */
-.roadmap-checklist {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.checklist-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-  padding: 0.5rem;
-  border-radius: 6px;
-  font-size: 0.8rem;
-  border: 1px solid transparent;
-  transition: all 0.15s;
-}
-
-.checklist-icon {
-  font-size: 0.9rem;
-  flex-shrink: 0;
-}
-
-.checklist-text {
-  color: #71717a;
-  line-height: 1.3;
-}
-
-.checklist-item.completed {
-  background: #f0fdf4;
-  border-color: #dcfce7;
-}
-
-.checklist-item.completed .checklist-text {
-  color: #166534;
-  text-decoration: line-through;
-  opacity: 0.75;
-}
-
-.checklist-item.active {
-  background: #e0e7ff;
-  border-color: #c7d2fe;
-}
-
-.checklist-item.active .checklist-text {
-  color: #3730a3;
-  font-weight: 600;
-}
-
-.checklist-item.upcoming {
-  background: #ffffff;
-  border-color: #f4f4f5;
-}
-
-.checklist-item.upcoming .checklist-text {
-  color: #71717a;
-}
-
-/* 7B. Center Panel: Blackboard Canvas Wrapper */
-.student-center-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  min-height: 0;
-}
-
-.center-panel-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #ffffff;
-  border: 1px solid #e4e4e7;
-  padding: 0.6rem 1rem;
-  border-radius: 8px;
-}
-
-.center-panel-header h2 {
-  font-size: 0.95rem;
-  font-weight: 600;
-  margin: 0;
-  color: #18181b;
-}
-
-.btn-analytics-toggle {
-  background: #ffffff;
-  border: 1px solid #e4e4e7;
-  border-radius: 6px;
-  color: #18181b;
-  font-size: 0.8rem;
-  font-weight: 500;
-  padding: 0.35rem 0.7rem;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.btn-analytics-toggle:hover {
-  background: #f4f4f5;
-  border-color: #4f46e5;
-  color: #4f46e5;
-}
-
-.center-panel-content {
-  flex-grow: 1;
-  background: #05050e; /* Kept Dark Canvas Backdrop as requested */
-  border: 1px solid #e4e4e7;
-  border-radius: 8px;
-  overflow: hidden;
   position: relative;
+  flex-grow: 1;
   min-height: 0;
+  height: calc(100vh - 72px); /* 72px = slim header */
+  background: #05050e;         /* dark canvas — the blackboard IS the page */
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
-.blackboard-workspace {
+/* ── Fullscreen Blackboard Zone (takes everything except bottom toolbar) ── */
+.blackboard-fullscreen {
   flex-grow: 1;
-  display: flex;
-  flex-direction: column;
   min-height: 0;
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
-/* Keep internal blackboard frame looking beautiful and isolated */
+/* ── The VisualBoard / empty state fills the whole blackboard zone ── */
 .blackboard-container {
-  position: relative;
   flex-grow: 1;
   display: flex;
   flex-direction: column;
@@ -993,7 +818,9 @@
   border: none;
   background: #05050e;
   width: 100%;
-  height: 100%;
+  /* explicit height so the iframe renders correctly */
+  min-height: 0;
+  display: block;
 }
 
 .blackboard-empty {
@@ -1003,447 +830,872 @@
   align-items: center;
   justify-content: center;
   background: #05050e;
-  color: #71717a;
-  gap: 0.75rem;
+  color: #52525b;
+  gap: 1rem;
   text-align: center;
   padding: 2rem;
 }
 
 .blackboard-empty svg {
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   color: #27272a;
 }
 
 .blackboard-empty h3 {
   margin: 0;
-  color: #f4f4f5;
-  font-size: 1.05rem;
+  color: #a1a1aa;
+  font-size: 1.15rem;
+  font-weight: 500;
 }
 
 .blackboard-empty p {
-  font-size: 0.8rem;
-  max-width: 300px;
+  font-size: 0.85rem;
+  max-width: 340px;
   margin: 0;
+  color: #52525b;
+  line-height: 1.5;
 }
 
-/* Floating Controls Dock inside Classroom */
-.student-controls-dock {
-  background: #ffffff;
-  border: 1px solid #e4e4e7;
-  border-radius: 8px;
-  padding: 0.75rem;
-}
-
-.dock-active-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.dock-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.dock-mic-input-group {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: #f4f4f5;
-  border: 1px solid #e4e4e7;
-  border-radius: 6px;
-  padding: 0.25rem 0.5rem;
-}
-
-.btn-mic-dock {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: #4f46e5;
-  border: none;
-  color: white;
+/* ── Quiz overlay on the blackboard ── */
+.blackboard-quiz-overlay {
+  flex-grow: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  transition: all 0.15s;
-  flex-shrink: 0;
+  background: #05050e;
+  padding: 2rem;
+  overflow-y: auto;
 }
 
-.btn-mic-dock:hover {
-  transform: scale(1.05);
-  background: #4338ca;
-}
-
-.btn-mic-dock.recording {
-  background: #ef4444;
-  animation: pulseGlow 1.2s infinite;
-}
-
-.dock-text-form {
-  display: flex;
-  flex-grow: 1;
-  gap: 0.4rem;
-}
-
-.dock-text-input {
-  flex-grow: 1;
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  font-size: 0.85rem !important;
-  color: #18181b !important;
-  padding: 0.4rem !important;
-}
-
-.btn-send-dock {
-  background: #4f46e5;
-  border: none;
-  border-radius: 4px;
-  padding: 0.35rem 0.85rem;
-  color: white;
-  font-weight: 500;
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.btn-send-dock:hover {
-  background: #4338ca;
-}
-
-/* 7C. Right Panel: Tutor Sidebar & Conversations Feed */
-.student-interaction-panel {
-  width: 320px;
-  background: #f9f9fb;
-  border: 1px solid #e4e4e7;
-  border-radius: 8px;
+/* ── Floating Overlay Panels (syllabus left, chat right) ── */
+.classroom-overlay-panel {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 280px;
+  background: rgba(9, 9, 11, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.07);
   display: flex;
   flex-direction: column;
+  z-index: 20;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
-  padding: 1rem;
-  gap: 1rem;
 }
 
-.interaction-header {
+.classroom-overlay-panel.left-panel {
+  left: 0;
+  border-radius: 0 12px 12px 0;
+  border-left: none;
+}
+
+.classroom-overlay-panel.left-panel.hidden {
+  transform: translateX(-100%);
+}
+
+.classroom-overlay-panel.right-panel {
+  right: 0;
+  border-radius: 12px 0 0 12px;
+  border-right: none;
+}
+
+.classroom-overlay-panel.right-panel.hidden {
+  transform: translateX(100%);
+}
+
+.overlay-panel-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #e4e4e7;
-  padding-bottom: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  flex-shrink: 0;
 }
 
-.interaction-header h3 {
-  font-size: 0.9rem;
+.overlay-panel-header h3 {
+  font-size: 0.8rem;
   font-weight: 600;
   margin: 0;
-  color: #18181b;
+  color: #a1a1aa;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
-.btn-close-session {
-  background: #fef2f2;
-  border: 1px solid #fee2e2;
-  border-radius: 4px;
-  color: #ef4444;
-  font-size: 0.75rem;
-  font-weight: 500;
-  padding: 0.25rem 0.5rem;
+.btn-close-panel {
+  background: none;
+  border: none;
+  color: #71717a;
   cursor: pointer;
+  font-size: 1rem;
+  padding: 0.2rem;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.btn-close-panel:hover {
+  color: #f4f4f5;
+}
+
+/* ── Syllabus Checklist inside overlay ── */
+.overlay-syllabus-content {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 0.75rem;
+}
+
+.roadmap-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  border: 1px solid transparent;
   transition: all 0.15s;
 }
 
-.btn-close-session:hover {
-  background: #fee2e2;
-  border-color: #fca5a5;
+.checklist-icon {
+  font-size: 0.85rem;
+  flex-shrink: 0;
 }
 
-/* AI Tutor Minimal Avatar widget */
-.avatar-widget-container {
+.checklist-text {
+  color: #71717a;
+  line-height: 1.35;
+}
+
+.checklist-item.completed {
+  background: rgba(16, 185, 129, 0.06);
+  border-color: rgba(16, 185, 129, 0.12);
+}
+
+.checklist-item.completed .checklist-text {
+  color: #34d399;
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+.checklist-item.active {
+  background: rgba(79, 70, 229, 0.12);
+  border-color: rgba(79, 70, 229, 0.25);
+}
+
+.checklist-item.active .checklist-text {
+  color: #a5b4fc;
+  font-weight: 600;
+}
+
+.checklist-item.upcoming {
+  background: transparent;
+  border-color: rgba(255,255,255,0.04);
+}
+
+/* ── Chat panel inside right overlay ── */
+.overlay-chat-content {
+  flex-grow: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 0.85rem 0;
-  gap: 0.6rem;
-  border-radius: 8px;
-  background: #ffffff;
-  border: 1px solid #e4e4e7;
+  overflow: hidden;
 }
 
-.avatar-container {
+/* AI Tutor avatar row */
+.overlay-avatar-row {
   display: flex;
-  justify-content: center;
   align-items: center;
-  position: relative;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
 }
 
 .avatar-outer {
-  width: 80px;
-  height: 80px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid #e4e4e7;
-  position: relative;
+  border: 2px solid #3f3f46;
+  background: #1c1c27;
+  flex-shrink: 0;
 }
 
 .avatar-outer.active {
   border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
 }
 
 .avatar-core {
-  width: 66px;
-  height: 66px;
-  border-radius: 50%;
-  background: #e0e7ff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-  color: #4f46e5;
+  font-size: 1.4rem;
+  line-height: 1;
 }
 
-.avatar-icon-glow {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  background: radial-gradient(circle, rgba(79, 70, 229, 0.15) 0%, transparent 70%);
-  opacity: 0;
-}
-
-.avatar-core.speaking .avatar-icon-glow {
-  opacity: 1;
-}
-
-.speech-waves {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  height: 16px;
-  margin-top: 0.2rem;
-}
-
-.speech-waves span {
-  width: 3px;
-  height: 6px;
-  background: #4f46e5;
-  border-radius: 1px;
-  animation: pulseSpeechWave 1.2s infinite ease-in-out;
+.tutor-info-col {
+  flex-grow: 1;
+  min-width: 0;
 }
 
 .tutor-name-label {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.15rem;
-}
-
-.tutor-name-label strong {
-  font-size: 0.85rem;
-  color: #18181b;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #f4f4f5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dialect-badge {
-  font-size: 0.65rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  background: #e0e7ff;
-  border: 1px solid #c7d2fe;
-  color: #4f46e5;
-  padding: 0.1rem 0.35rem;
+  display: inline-block;
+  font-size: 0.7rem;
+  background: rgba(79, 70, 229, 0.18);
+  color: #a5b4fc;
+  padding: 0.1rem 0.4rem;
   border-radius: 4px;
+  margin-left: 0.4rem;
+  font-weight: 500;
 }
 
-/* Chat History Transcript feed inside sidebar */
-.transcript-panel {
-  flex-grow: 1;
+/* Speech wave animation */
+.speech-waves {
   display: flex;
-  flex-direction: column;
-  min-height: 0;
+  align-items: flex-end;
+  gap: 2px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
-.transcript-panel h3 {
-  font-size: 0.8rem;
-  color: #71717a;
-  margin: 0 0 0.4rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+.speech-waves span {
+  display: inline-block;
+  width: 3px;
+  border-radius: 2px;
+  background: #4f46e5;
+  animation: waveAnim 0.8s ease-in-out infinite;
 }
 
+.speech-waves span:nth-child(1) { height: 4px; animation-delay: 0s; }
+.speech-waves span:nth-child(2) { height: 8px; animation-delay: 0.1s; }
+.speech-waves span:nth-child(3) { height: 14px; animation-delay: 0.2s; }
+.speech-waves span:nth-child(4) { height: 8px; animation-delay: 0.3s; }
+.speech-waves span:nth-child(5) { height: 4px; animation-delay: 0.4s; }
+
+@keyframes waveAnim {
+  0%, 100% { transform: scaleY(1); opacity: 0.6; }
+  50% { transform: scaleY(1.8); opacity: 1; }
+}
+
+/* Transcript feed */
 .transcript-area {
-  background: #ffffff;
-  border: 1px solid #e4e4e7;
-  border-radius: 6px;
-  padding: 0.75rem;
-  overflow-y: auto;
   flex-grow: 1;
+  overflow-y: auto;
+  padding: 0.75rem;
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  min-height: 0;
-  font-size: 0.85rem;
 }
 
 .msg {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
-  max-width: 85%;
-  padding: 0.45rem 0.65rem;
-  border-radius: 6px;
-  line-height: 1.4;
-}
-
-.msg.user {
-  align-self: flex-end;
-  background: #e0e7ff;
-  border: 1px solid #c7d2fe;
-  border-bottom-right-radius: 1px;
-}
-
-.msg.user span.speaker-label {
-  color: #3730a3;
+  gap: 0.2rem;
+  max-width: 90%;
 }
 
 .msg.tutor {
   align-self: flex-start;
-  background: #f4f4f5;
-  border: 1px solid #e4e4e7;
-  border-top-left-radius: 1px;
 }
 
-.msg.tutor span.speaker-label {
-  color: #18181b;
+.msg.user {
+  align-self: flex-end;
 }
 
 .speaker-label {
-  font-size: 0.7rem;
-  font-weight: 600;
+  font-size: 0.67rem;
+  color: #52525b;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
 }
 
-/* Student Analytics Tab Layout */
-.analytics-tab-content {
-  padding: 1.25rem;
-  overflow-y: auto;
-  height: 100%;
-  background: #ffffff;
+.msg p {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
 }
 
-.dashboard-progress-section {
-  border: 1px solid #e4e4e7;
+.msg.tutor p {
+  background: rgba(255,255,255,0.05);
+  color: #d4d4d8;
+  border-bottom-left-radius: 2px;
+}
+
+.msg.user p {
+  background: rgba(79, 70, 229, 0.2);
+  color: #c7d2fe;
+  border-bottom-right-radius: 2px;
+}
+
+/* ── Bottom Toolbar ── */
+.classroom-toolbar {
+  flex-shrink: 0;
+  background: rgba(9, 9, 11, 0.97);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 0.6rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  z-index: 10;
+}
+
+/* connect state (pre-connection) */
+.toolbar-connect-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.toolbar-student-info {
+  font-size: 0.8rem;
+  color: #71717a;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.toolbar-student-info strong {
+  color: #a1a1aa;
+}
+
+.toolbar-select {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
   border-radius: 6px;
-  padding: 0.85rem;
-  background: #f9f9fb;
+  color: #d4d4d8;
+  font-size: 0.8rem;
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+  outline: none;
+}
+
+.toolbar-select:focus {
+  border-color: #4f46e5;
+}
+
+/* live session toolbar */
+.toolbar-live-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.toolbar-live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: #71717a;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.toolbar-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
+  animation: pulseGlow 1.5s infinite;
+}
+
+.toolbar-live-dot.muted {
+  background: #52525b;
+  box-shadow: none;
+  animation: none;
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.btn-toolbar {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  color: #d4d4d8;
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 0.35rem 0.7rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.btn-toolbar:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.2);
+}
+
+.btn-toolbar.primary {
+  background: #4f46e5;
+  border-color: #4f46e5;
+  color: #ffffff;
+}
+
+.btn-toolbar.primary:hover {
+  background: #4338ca;
+  border-color: #4338ca;
+}
+
+.btn-toolbar.muted {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.25);
+  color: #f87171;
+}
+
+.btn-toolbar.muted:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.btn-toolbar.danger {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.btn-toolbar.danger:hover {
+  background: rgba(239, 68, 68, 0.18);
+}
+
+/* Text input inside toolbar */
+.toolbar-text-form {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.toolbar-text-input {
+  flex-grow: 1;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #d4d4d8 !important;
+  font-size: 0.82rem !important;
+  padding: 0.4rem 0.75rem !important;
+  outline: none;
+}
+
+.toolbar-text-input::placeholder {
+  color: #52525b;
+}
+
+.btn-toolbar-send {
+  background: #4f46e5;
+  border: none;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.45rem 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.btn-toolbar-send:hover {
+  background: #4338ca;
+}
+
+/* ── Slim classroom header (replaces full app-header on classroom page) ── */
+.classroom-header {
+  flex-shrink: 0;
+  background: rgba(9, 9, 11, 0.98);
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  padding: 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  z-index: 30;
+  min-height: 48px;
+}
+
+.classroom-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.classroom-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #f4f4f5;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.classroom-title:hover {
+  color: #a5b4fc;
+}
+
+.classroom-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* panel toggle buttons in header */
+.btn-panel-toggle {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  color: #a1a1aa;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.btn-panel-toggle:hover,
+.btn-panel-toggle.active {
+  background: rgba(79, 70, 229, 0.15);
+  border-color: rgba(79, 70, 229, 0.35);
+  color: #a5b4fc;
+}
+
+/* Status badge on header */
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #71717a;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #3f3f46;
+}
+
+.status-dot.connected {
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
+  animation: pulseGlow 2s infinite;
+}
+
+.status-dot.connecting {
+  background: #f59e0b;
+  animation: pulseGlow 0.8s infinite;
+}
+
+/* Analytics overlay (replaces blackboard when in analytics tab) */
+.analytics-overlay {
+  flex-grow: 1;
+  background: #09090b;
+  overflow-y: auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.analytics-overlay h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f4f4f5;
+  margin: 0;
+}
+
+/* Progress section in analytics */
+.dashboard-progress-section {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
 }
 
 .progress-labels {
   display: flex;
   justify-content: space-between;
-  font-size: 0.85rem;
-  font-weight: 500;
-  margin-bottom: 0.4rem;
+  font-size: 0.82rem;
+  color: #a1a1aa;
+  margin-bottom: 0.5rem;
 }
 
 .progress-track-bg {
-  background: #e4e4e7;
   height: 6px;
+  background: rgba(255,255,255,0.08);
   border-radius: 3px;
   overflow: hidden;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.5rem;
 }
 
 .progress-fill {
-  background: #4f46e5;
   height: 100%;
-  transition: width 0.3s ease;
+  background: linear-gradient(90deg, #4f46e5, #7c3aed);
+  border-radius: 3px;
+  transition: width 0.4s ease;
 }
 
 .active-step-hint {
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   color: #71717a;
-  margin: 0.25rem 0 0 0;
+  margin: 0;
 }
 
 .quiz-score-circle {
-  width: 64px;
-  height: 64px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
-  border: 3px solid #4f46e5;
+  border: 3px solid #52525b;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #f9f9fb;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.03);
 }
 
-.quiz-score-circle .score-val {
-  font-size: 1.1rem;
+.score-val {
+  font-size: 1.4rem;
   font-weight: 700;
+  line-height: 1;
 }
 
-.quiz-score-circle .score-lbl {
-  font-size: 0.55rem;
+.score-lbl {
+  font-size: 0.6rem;
+  color: #71717a;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .diagnostics-card {
-  border: 1px solid #e4e4e7;
-  border-radius: 6px;
-  padding: 1rem;
-  background: #ffffff;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
 }
 
 .diagnostics-card h3 {
-  margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 600;
-  color: #18181b;
+  color: #a1a1aa;
+  margin: 0 0 0.6rem 0;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
 }
 
 .badges-container {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: 0.4rem;
 }
 
 .badge {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   padding: 0.2rem 0.5rem;
-  border-radius: 4px;
+  border-radius: 20px;
   font-weight: 500;
 }
 
 .strength-badge {
-  background: #eafaf1;
-  color: #10b981;
-  border: 1px solid #a7f3d0;
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
 .gap-badge {
-  background: #fef2f2;
-  color: #ef4444;
-  border: 1px solid #fca5a5;
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.no-data-text {
+  font-size: 0.78rem;
+  color: #52525b;
+  margin: 0;
 }
 
 .summary-text-box {
-  border: 1px solid #e4e4e7;
-  border-radius: 6px;
-  padding: 0.75rem;
-  background: #f9f9fb;
-  font-size: 0.85rem;
-  line-height: 1.4;
-  overflow-y: auto;
-  max-height: 150px;
+  font-size: 0.8rem;
+  color: #a1a1aa;
+  line-height: 1.6;
+  white-space: pre-wrap;
 }
 
+/* ── Quiz on blackboard ── */
+.quiz-card-box {
+  width: 100%;
+  max-width: 600px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.quiz-question-container {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.quiz-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.quiz-question-text {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #f4f4f5;
+  line-height: 1.5;
+}
+
+.quiz-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.quiz-option-btn {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 0.65rem 1rem;
+  color: #d4d4d8;
+  font-size: 0.88rem;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.quiz-option-btn:hover:not(:disabled) {
+  background: rgba(79, 70, 229, 0.12);
+  border-color: rgba(79, 70, 229, 0.3);
+  color: #c7d2fe;
+}
+
+.quiz-option-btn.selected-option {
+  background: rgba(79, 70, 229, 0.18);
+  border-color: #4f46e5;
+  color: #c7d2fe;
+}
+
+.quiz-option-btn.correct-option {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: #10b981;
+  color: #34d399;
+}
+
+.quiz-option-btn.incorrect-option {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+  color: #f87171;
+}
+
+.quiz-option-btn.disabled-option {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.option-letter {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #71717a;
+  width: 20px;
+  flex-shrink: 0;
+}
+
+.option-text {
+  flex-grow: 1;
+}
+
+.feedback-icon {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.quiz-feedback-box {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.quiz-feedback-status {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.quiz-feedback-status.status-success { color: #34d399; }
+.quiz-feedback-status.status-error { color: #f87171; }
+
+.quiz-explanation-text {
+  font-size: 0.82rem;
+  color: #a1a1aa;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Alert error */
+.alert-error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 6px;
+  color: #f87171;
+  font-size: 0.82rem;
+  padding: 0.5rem 0.75rem;
+  margin: 0 1rem;
+}
+
+/* Debug panel */
+.debug-toggle-container {
+  padding: 0.5rem 1rem;
+  background: rgba(9,9,11,0.97);
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
 
 /* ==========================================================================
    8. INTERACTIVE QUIZ CARD WINDOW
