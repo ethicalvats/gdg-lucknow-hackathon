@@ -1648,82 +1648,79 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
 
               {/* 3. STUDENT ROSTER */}
               {coordinatorActiveTab === "students" && (
-                <div className="coordinator-students-layout" style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr", gap: "1.5rem" }}>
-                  {/* Left Column: Register & Student Roster */}
-                  <div className="glass-panel" style={{ padding: "1.25rem" }}>
-                    <form onSubmit={handleCreateStudent} className="student-register-form">
-                      <h3 style={{ marginTop: 0 }}>Register Student Profile</h3>
-                      <div className="add-step-form">
+                <div className="master-detail-layout">
+                  {/* Left Column: Master Students List */}
+                  <div className="master-list-panel">
+                    <div className="panel-header-minimal">
+                      <h3>Students</h3>
+                      <form onSubmit={handleCreateStudent} className="add-student-form-inline-minimal">
                         <input
                           type="text"
-                          className="input-key"
-                          placeholder="छात्र का नाम लिखें..."
+                          className="input-minimal"
+                          style={{ width: "120px", display: "inline-block", marginRight: "0.25rem", padding: "0.25rem 0.5rem", fontSize: "0.8rem" }}
+                          placeholder="Register student..."
                           required
                           value={newStudentName}
                           onChange={(e) => setNewStudentName(e.target.value)}
                         />
-                        <button type="submit" className="btn-add-step">➕ Register</button>
-                      </div>
-                    </form>
-
-                    <div className="student-assignments-section" style={{ marginTop: "1.5rem" }}>
-                      <h3>Registered Roster & Tutor Assign</h3>
-                      <div className="list-card-container scrollable-roster" style={{ maxHeight: "400px" }}>
-                        {students.length === 0 ? (
-                          <p className="no-data-text">कोई छात्र पंजीकृत नहीं है। ऊपर नया छात्र जोड़ें।</p>
-                        ) : (
-                          students.map(s => (
-                            <div key={s.id} className="crud-list-item assign-row">
-                              <div className="crud-item-info">
-                                <strong>{s.name}</strong>
-                                <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>ID: {s.id}</span>
-                              </div>
-                              <div className="assign-controls">
-                                <select
-                                  className="input-key select-custom select-inline"
-                                  value={s.assignedTutorId || ""}
-                                  onChange={(e) => handleAssignTutor(s.id, e.target.value)}
-                                >
-                                  <option value="">-- No Tutor --</option>
-                                  {tutors.map(t => (
-                                    <option key={t.id} value={t.id}>{t.name} ({t.subject || "Physics"})</option>
-                                  ))}
-                                </select>
-                                <button className="btn-crud-delete" onClick={() => handleDeleteStudent(s.id)}>❌</button>
-                              </div>
+                        <button type="submit" className="btn-accent-minimal" style={{ padding: "0.25rem 0.5rem", fontSize: "0.8rem" }}>➕</button>
+                      </form>
+                    </div>
+                    <div className="list-items-scrollable">
+                      {students.length === 0 ? (
+                        <p className="no-data-text-minimal">No students registered yet.</p>
+                      ) : (
+                        students.map(s => (
+                          <div 
+                            key={s.id} 
+                            className={`list-item-row ${selectedStudentId === s.id ? "active" : ""}`}
+                            onClick={() => setSelectedStudentId(s.id)}
+                          >
+                            <div className="item-row-info">
+                              <strong>{s.name}</strong>
+                              <span>{s.assignedTutorId ? tutors.find(t => t.id === s.assignedTutorId)?.name || "Assigned" : "No Tutor"}</span>
                             </div>
-                          ))
-                        )}
-                      </div>
+                            <button 
+                              type="button"
+                              className="btn-row-delete" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteStudent(s.id);
+                              }}
+                            >
+                              ❌
+                            </button>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
 
-                  {/* Right Column: Custom Student Lesson Plan Customizer */}
-                  <div className="glass-panel" style={{ padding: "1.25rem" }}>
-                    <h3 style={{ marginTop: 0 }}>Modify Individual Student Roadmaps</h3>
-                    <div className="settings-group" style={{ marginTop: "1rem" }}>
-                      <label>Choose Student to Customize Plan</label>
-                      <select 
-                        className="input-key select-custom" 
-                        value={selectedStudentId} 
-                        onChange={(e) => setSelectedStudentId(e.target.value)}
-                      >
-                        <option value="">-- Choose Student --</option>
-                        {students.map(s => (
-                          <option key={s.id} value={s.id}>{s.name} {s.assignedTutorId ? `(Tutor: ${tutors.find(t => t.id === s.assignedTutorId)?.name || 'Assigned'})` : '(No Tutor)'}</option>
-                        ))}
-                      </select>
-                    </div>
-
+                  {/* Right Column: Student Detail Customizer */}
+                  <div className="detail-view-panel">
                     {activeSelectedStudent ? (
-                      <div className="student-customizer-box" style={{ marginTop: "1rem" }}>
-                        <h4>Checklist Roadmap for {activeSelectedStudent.name}</h4>
+                      <div className="detail-form-minimal">
+                        <h3 className="detail-header-title">Tune Roadmap: {activeSelectedStudent.name}</h3>
                         
-                        <div className="settings-row" style={{ gap: "0.5rem", margin: "1rem 0" }}>
-                          <div className="settings-group half-width">
+                        <div className="settings-group-minimal">
+                          <label>Assign Tutor Template</label>
+                          <select
+                            className="select-minimal"
+                            value={activeSelectedStudent.assignedTutorId || ""}
+                            onChange={(e) => handleAssignTutor(activeSelectedStudent.id, e.target.value)}
+                          >
+                            <option value="">-- No Tutor --</option>
+                            {tutors.map(t => (
+                              <option key={t.id} value={t.id}>{t.name} ({t.subject || "Physics"})</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="settings-row-minimal">
+                          <div className="settings-group-minimal half-width">
                             <label>Dialect Override</label>
                             <select 
-                              className="input-key select-custom" 
+                              className="select-minimal" 
                               value={activeSelectedStudent.dialect || "awadhi"} 
                               onChange={(e) => handleUpdateStudentLessonPlan(activeSelectedStudent.id, activeSelectedStudent.lessonPlan, e.target.value, activeSelectedStudent.pace)}
                             >
@@ -1733,10 +1730,10 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
                               <option value="auto">Auto-Adapt</option>
                             </select>
                           </div>
-                          <div className="settings-group half-width">
+                          <div className="settings-group-minimal half-width">
                             <label>Pace Override</label>
                             <select 
-                              className="input-key select-custom" 
+                              className="select-minimal" 
                               value={activeSelectedStudent.pace || "normal"} 
                               onChange={(e) => handleUpdateStudentLessonPlan(activeSelectedStudent.id, activeSelectedStudent.lessonPlan, activeSelectedStudent.dialect, e.target.value)}
                             >
@@ -1747,54 +1744,60 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
                           </div>
                         </div>
 
-                        <div className="lesson-plan-list small-height" style={{ maxHeight: "250px" }}>
-                          {(!activeSelectedStudent.lessonPlan || activeSelectedStudent.lessonPlan.length === 0) ? (
-                            <p className="no-data-text">No custom lesson plan steps. Please assign a tutor first.</p>
-                          ) : (
-                            activeSelectedStudent.lessonPlan.map((step, idx) => (
-                              <div key={idx} className="step-builder-item">
-                                <span className="step-num">{idx + 1}</span>
-                                <span className="step-text" style={{ fontSize: "0.85rem" }}>{step}</span>
-                                <button 
-                                  type="button" 
-                                  className="btn-delete-step" 
-                                  onClick={() => {
-                                    const newPlan = activeSelectedStudent.lessonPlan.filter((_, i) => i !== idx);
-                                    handleUpdateStudentLessonPlan(activeSelectedStudent.id, newPlan);
-                                  }}
-                                >
-                                  ❌
-                                </button>
-                              </div>
-                            ))
-                          )}
-                        </div>
+                        <div className="settings-group-minimal lesson-builder-minimal">
+                          <label>Custom Checklist Roadmap</label>
+                          <div className="lesson-plan-list-minimal">
+                            {(!activeSelectedStudent.lessonPlan || activeSelectedStudent.lessonPlan.length === 0) ? (
+                              <p className="no-data-text-minimal">No custom lesson plan steps. Please assign a tutor first.</p>
+                            ) : (
+                              activeSelectedStudent.lessonPlan.map((step, idx) => (
+                                <div key={idx} className="step-builder-item-minimal">
+                                  <span className="step-num-minimal">{idx + 1}</span>
+                                  <span className="step-text-minimal">{step}</span>
+                                  <button 
+                                    type="button" 
+                                    className="btn-delete-step-minimal" 
+                                    onClick={() => {
+                                      const newPlan = activeSelectedStudent.lessonPlan.filter((_, i) => i !== idx);
+                                      handleUpdateStudentLessonPlan(activeSelectedStudent.id, newPlan);
+                                    }}
+                                  >
+                                    ❌
+                                  </button>
+                                </div>
+                              ))
+                            )}
+                          </div>
 
-                        <div className="add-step-form" style={{ marginTop: "1rem" }}>
-                          <input
-                            type="text"
-                            className="input-key add-step-input"
-                            placeholder="नया पाठ चरण जोड़ें..."
-                            value={newStudentStepText}
-                            onChange={(e) => setNewStudentStepText(e.target.value)}
-                          />
-                          <button 
-                            type="button" 
-                            className="btn-add-step" 
-                            onClick={() => {
-                              if (newStudentStepText.trim()) {
-                                const newPlan = [...(activeSelectedStudent.lessonPlan || []), newStudentStepText.trim()];
-                                handleUpdateStudentLessonPlan(activeSelectedStudent.id, newPlan);
-                                setNewStudentStepText("");
-                              }
-                            }}
-                          >
-                            ➕ Add Step
-                          </button>
+                          <div className="add-step-form-minimal">
+                            <input
+                              type="text"
+                              className="input-minimal add-step-input"
+                              placeholder="Add custom lesson step..."
+                              value={newStudentStepText}
+                              onChange={(e) => setNewStudentStepText(e.target.value)}
+                            />
+                            <button 
+                              type="button" 
+                              className="btn-accent-minimal" 
+                              onClick={() => {
+                                if (newStudentStepText.trim()) {
+                                  const newPlan = [...(activeSelectedStudent.lessonPlan || []), newStudentStepText.trim()];
+                                  handleUpdateStudentLessonPlan(activeSelectedStudent.id, newPlan);
+                                  setNewStudentStepText("");
+                                }
+                              }}
+                            >
+                              ➕ Add Step
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ) : (
-                      <p className="no-data-text" style={{ marginTop: "1rem" }}>Please select a student from the dropdown menu to tune their learning roadmap.</p>
+                      <div className="detail-empty-minimal">
+                        <span style={{ fontSize: "2.5rem" }}>👥</span>
+                        <p>Select a student from the roster list on the left to customize settings and tune their learning roadmap.</p>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1802,64 +1805,42 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
 
               {/* 4. LIVE MONITORING */}
               {coordinatorActiveTab === "monitor" && (
-                <div className="coordinator-monitor-layout" style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr", gap: "1.5rem" }}>
-                  {/* Left Column: Diagnostics Report */}
-                  <div className="glass-panel" style={{ padding: "1.25rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
-                    <div className="settings-group">
-                      <label>Choose Student to Monitor</label>
-                      <select 
-                        className="input-key select-custom" 
-                        value={selectedStudentId} 
-                        onChange={(e) => setSelectedStudentId(e.target.value)}
-                      >
-                        <option value="">-- Choose Student --</option>
-                        {students.map(s => (
-                          <option key={s.id} value={s.id}>{s.name} 🎯</option>
-                        ))}
-                      </select>
+                <div className="master-detail-layout">
+                  {/* Left Column: Master Students Monitoring List */}
+                  <div className="master-list-panel">
+                    <div className="panel-header-minimal">
+                      <h3>Monitored Students</h3>
                     </div>
-
-                    {activeSelectedStudent ? (
-                      <>
-                        {/* Summary */}
-                        <div className="diagnostics-card flex-grow-card" style={{ display: "flex", flexDirection: "column" }}>
-                          <h3 style={{ margin: 0, paddingBottom: "0.5rem" }}>📝 Live Qualitative AI Report</h3>
-                          <div className="summary-text-box" style={{ maxHeight: "none", flexGrow: 1 }}>
-                            {activeSelectedStudent.diagnostics || "रिपोर्ट अभी खाली है।"}
+                    <div className="list-items-scrollable">
+                      {students.length === 0 ? (
+                        <p className="no-data-text-minimal">No students available.</p>
+                      ) : (
+                        students.map(s => (
+                          <div 
+                            key={s.id} 
+                            className={`list-item-row ${selectedStudentId === s.id ? "active" : ""}`}
+                            onClick={() => setSelectedStudentId(s.id)}
+                          >
+                            <div className="item-row-info">
+                              <strong>{s.name}</strong>
+                              <span>{s.assignedTutorId ? tutors.find(t => t.id === s.assignedTutorId)?.name || "Assigned" : "No Tutor"}</span>
+                            </div>
+                            <span style={{ fontSize: "1.2rem" }}>🎯</span>
                           </div>
-                        </div>
-
-                        <div style={{ display: "flex", gap: "0.5rem" }}>
-                          <button 
-                            className="btn-connect" 
-                            onClick={() => exportCoordinatorStudentReport(activeSelectedStudent)}
-                            style={{ flexGrow: 1 }}
-                          >
-                            📥 Save Report
-                          </button>
-                          <button 
-                            className="btn-connect disconnect" 
-                            onClick={() => handleResetStudentProgress(activeSelectedStudent.id)}
-                            style={{ flexGrow: 1 }}
-                          >
-                            🔄 Reset Student
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <p className="no-data-text">Select a student from the dropdown menu to monitor logs.</p>
-                    )}
+                        ))
+                      )}
+                    </div>
                   </div>
 
-                  {/* Right Column: Live Status & Prompts */}
-                  <div className="glass-panel" style={{ padding: "1.25rem" }}>
+                  {/* Right Column: Live Details & Control */}
+                  <div className="detail-view-panel">
                     {activeSelectedStudent ? (
-                      <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-                        <h3 style={{ marginTop: 0 }}>Live Status for {activeSelectedStudent.name}</h3>
+                      <div className="detail-form-minimal">
+                        <h3 className="detail-header-title">Live Session: {activeSelectedStudent.name}</h3>
 
                         {/* Checklist Progress */}
-                        <div className="dashboard-progress-section">
-                          <div className="progress-labels">
+                        <div className="settings-group-minimal">
+                          <div className="progress-labels" style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
                             <span>Syllabus Completion</span>
                             <span>
                               {activeSelectedStudent.lessonPlan && activeSelectedStudent.lessonPlan.length > 0
@@ -1867,131 +1848,130 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
                                 : 0}%
                             </span>
                           </div>
-                          <div className="progress-track-bg">
+                          <div className="progress-track-bg" style={{ background: "#e4e4e7", height: "8px", borderRadius: "4px", overflow: "hidden", marginBottom: "0.5rem" }}>
                             <div 
                               className="progress-fill" 
                               style={{ 
+                                background: "#4f46e5",
+                                height: "100%",
                                 width: `${activeSelectedStudent.lessonPlan && activeSelectedStudent.lessonPlan.length > 0
                                   ? Math.min(100, Math.round(((activeSelectedStudent.currentStepIndex || 0) + 1) / activeSelectedStudent.lessonPlan.length * 100))
                                   : 0}%` 
                               }} 
                             />
                           </div>
-                          <p className="active-step-hint" style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "0.5rem" }}>
+                          <p className="active-step-hint" style={{ fontSize: "0.85rem", color: "#71717a", margin: 0 }}>
                             <strong>Active Step:</strong> {activeSelectedStudent.lessonPlan ? activeSelectedStudent.lessonPlan[activeSelectedStudent.currentStepIndex || 0] : "None"}
                           </p>
                         </div>
-                        <div className="lesson-plan-list small-height" style={{ maxHeight: "250px", marginTop: "0.5rem" }}>
-                          {(() => {
-                            const tutorObj = tutors.find(t => t.id === activeSelectedStudent.assignedTutorId);
-                            const currentPlan = activeSelectedStudent.lessonPlan && activeSelectedStudent.lessonPlan.length > 0 
-                              ? activeSelectedStudent.lessonPlan 
-                              : (tutorObj ? tutorObj.lessonPlan : []);
-                            return currentPlan.map((step, idx) => (
-                              <div key={idx} className="step-builder-item-wrapper">
-                                <div className="step-builder-item">
-                                  <span className="step-num">{idx + 1}</span>
-                                  <span className="step-text" style={{ fontSize: "0.85rem" }}>{step}</span>
+
+                        {/* Custom Checklist Roadmap */}
+                        <div className="settings-group-minimal lesson-builder-minimal">
+                          <label>Custom Checklist Roadmap</label>
+                          <div className="lesson-plan-list-minimal">
+                            {(!activeSelectedStudent.lessonPlan || activeSelectedStudent.lessonPlan.length === 0) ? (
+                              <p className="no-data-text-minimal">No custom lesson plan steps. Please assign a tutor first.</p>
+                            ) : (
+                              activeSelectedStudent.lessonPlan.map((step, idx) => (
+                                <div key={idx} className="step-builder-item-minimal">
+                                  <span className="step-num-minimal">{idx + 1}</span>
+                                  <span className="step-text-minimal">{step}</span>
                                   <button 
                                     type="button" 
-                                    className="btn-delete-step" 
+                                    className="btn-delete-step-minimal" 
                                     onClick={() => {
-                                      const newPlan = currentPlan.filter((_, i) => i !== idx);
+                                      const newPlan = activeSelectedStudent.lessonPlan.filter((_, i) => i !== idx);
                                       handleUpdateStudentLessonPlan(activeSelectedStudent.id, newPlan);
-                                  }}
-                                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.75rem" }}
-                                >
-                                  ❌
-                                </button>
-                              </div>
-                            </div>
-                          ));
-                        })()}
-                      </div>
-                      <div className="add-step-form" style={{ marginTop: "0.5rem" }}>
-                        <input
-                          type="text"
-                          className="input-key add-step-input"
-                          placeholder="नया पाठ चरण जोड़ें..."
-                          value={newStudentStepText}
-                          onChange={(e) => setNewStudentStepText(e.target.value)}
-                          style={{ fontSize: "0.8rem", padding: "0.4rem" }}
-                        />
-                        <button 
-                          type="button" 
-                          className="btn-add-step" 
-                          onClick={() => {
-                            if (newStudentStepText.trim()) {
-                              const tutorObj = tutors.find(t => t.id === activeSelectedStudent.assignedTutorId);
-                              const currentPlan = activeSelectedStudent.lessonPlan && activeSelectedStudent.lessonPlan.length > 0 
-                                ? activeSelectedStudent.lessonPlan 
-                                : (tutorObj ? tutorObj.lessonPlan : []);
-                              
-                              const newPlan = [...currentPlan, newStudentStepText.trim()];
-                              handleUpdateStudentLessonPlan(activeSelectedStudent.id, newPlan);
-                              setNewStudentStepText("");
-                            }
-                          }}
-                          style={{ padding: "0.4rem 0.6rem", fontSize: "0.8rem" }}
-                        >
-                          ➕
-                        </button>
-                      </div>
+                                    }}
+                                  >
+                                    ❌
+                                  </button>
+                                </div>
+                              ))
+                            )}
+                          </div>
 
-                    {/* Coordinator Live Prompt Note to Tutor */}
-                    <div className="coordinator-live-prompt">
-                      <label style={{ fontSize: "0.85rem", color: "var(--text-secondary)", fontWeight: 500 }}>Live Supervisor Note (AI Tutor prompt)</label>
-                      <div className="add-step-form" style={{ marginTop: "0.25rem" }}>
-                        <input
-                          type="text"
-                          className="input-key"
-                          placeholder="उदा. 'धीरे समझाइए', 'एक क्विज पूछिए'..."
-                          value={liveInstructionText}
-                          onChange={(e) => setLiveInstructionText(e.target.value)}
-                          style={{ fontSize: "0.8rem", padding: "0.4rem" }}
-                        />
-                        <button 
-                          type="button" 
-                          className="btn-add-step" 
-                          onClick={() => handleSendCoordinatorInstruction(activeSelectedStudent.id)}
-                          style={{ padding: "0.4rem 0.6rem", fontSize: "0.8rem", background: "linear-gradient(135deg, #0891b2 0%, #0369a1 100%)", color: "white", borderColor: "transparent" }}
-                        >
-                          📣 Send
-                        </button>
-                      </div>
-                    </div>
+                          <div className="add-step-form-minimal">
+                            <input
+                              type="text"
+                              className="input-minimal add-step-input"
+                              placeholder="Add custom lesson step..."
+                              value={newStudentStepText}
+                              onChange={(e) => setNewStudentStepText(e.target.value)}
+                            />
+                            <button 
+                              type="button" 
+                              className="btn-accent-minimal" 
+                              onClick={() => {
+                                if (newStudentStepText.trim()) {
+                                  const newPlan = [...(activeSelectedStudent.lessonPlan || []), newStudentStepText.trim()];
+                                  handleUpdateStudentLessonPlan(activeSelectedStudent.id, newPlan);
+                                  setNewStudentStepText("");
+                                }
+                              }}
+                            >
+                              ➕ Add Step
+                            </button>
+                          </div>
+                        </div>
 
-                  {/* Summary */}
-                  <div className="diagnostics-card flex-grow-card">
-                    <h3>📝 Summary Diagnostics Report</h3>
-                    <div className="summary-text-box">
-                      {activeSelectedStudent.diagnostics || "रिपोर्ट अभी खाली है।"}
-                    </div>
+                        {/* Coordinator Live Prompt Note to Tutor */}
+                        <div className="settings-group-minimal">
+                          <label>Live Supervisor Note (AI Tutor prompt)</label>
+                          <div className="add-step-form-minimal">
+                            <input
+                              type="text"
+                              className="input-minimal"
+                              placeholder="उदा. 'धीरे समझाइए', 'एक क्विज पूछिए'..."
+                              value={liveInstructionText}
+                              onChange={(e) => setLiveInstructionText(e.target.value)}
+                            />
+                            <button 
+                              type="button" 
+                              className="btn-accent-minimal" 
+                              onClick={() => handleSendCoordinatorInstruction(activeSelectedStudent.id)}
+                            >
+                              📣 Send
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Summary */}
+                        <div className="settings-group-minimal diagnostics-card-minimal">
+                          <label>📝 Summary Diagnostics Report</label>
+                          <div className="summary-text-box-minimal" style={{ border: "1px solid #e4e4e7", padding: "0.75rem", borderRadius: "6px", background: "#f4f4f5", minHeight: "100px", maxHeight: "200px", overflowY: "auto", fontSize: "0.9rem" }}>
+                            {activeSelectedStudent.diagnostics || "रिपोर्ट अभी खाली है।"}
+                          </div>
+                        </div>
+
+                        <div className="action-buttons-minimal" style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
+                          <button 
+                            type="button"
+                            className="btn-accent-minimal" 
+                            style={{ flexGrow: 1 }}
+                            onClick={() => exportCoordinatorStudentReport(activeSelectedStudent)}
+                          >
+                            📥 Save & Export Diagnostic Report
+                          </button>
+                          <button 
+                            type="button"
+                            className="btn-danger-minimal" 
+                            style={{ flexGrow: 1 }}
+                            onClick={() => handleResetStudentProgress(activeSelectedStudent.id)}
+                          >
+                            🔄 Reset Progress & Lesson
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="detail-empty-minimal">
+                        <span style={{ fontSize: "2.5rem" }}>📊</span>
+                        <p>Select a student from the monitored list on the left to view diagnostics report, lesson roadmap, and send real-time supervisor notes.</p>
+                      </div>
+                    )}
                   </div>
-
-                  <button 
-                    className="btn-connect" 
-                    onClick={() => exportCoordinatorStudentReport(activeSelectedStudent)}
-                  >
-                    📥 Save & Export Diagnostic Report
-                  </button>
-                  <button 
-                    className="btn-connect disconnect" 
-                    style={{ marginTop: "0.5rem" }}
-                    onClick={() => handleResetStudentProgress(activeSelectedStudent.id)}
-                  >
-                    🔄 Reset Progress & Lesson
-                  </button>
-                </div>
-              ) : (
-                <div className="dashboard-empty-state">
-                  <span style={{ fontSize: "3rem" }}>📊</span>
-                  <p>चयनित छात्र का लाइव स्कोर, पाठ योजना प्रगति, कमजोरी और ताकतों का रिपोर्ट देखने के लिए छात्र का चयन करें।</p>
                 </div>
               )}
-            </div>
-          </div>
-        )}
       </main>
       </div>
     </div>

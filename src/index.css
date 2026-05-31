@@ -1,15 +1,17 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  --bg-gradient: linear-gradient(135deg, #090816 0%, #0d0b26 50%, #150f38 100%);
-  --glass-bg: rgba(255, 255, 255, 0.03);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-border-glow: rgba(168, 85, 247, 0.3);
-  --text-primary: #f3f4f6;
-  --text-secondary: #9ca3af;
-  --accent-primary: #a855f7; /* Purple */
-  --accent-glow: rgba(168, 85, 247, 0.4);
-  --accent-secondary: #06b6d4; /* Cyan */
+  --bg-gradient: #ffffff;
+  --bg-main: #ffffff;
+  --bg-sidebar: #f9f9fb;
+  --glass-bg: #ffffff;
+  --glass-border: #e4e4e7;
+  --glass-border-glow: #4f46e5;
+  --text-primary: #18181b;
+  --text-secondary: #71717a;
+  --accent-primary: #4f46e5; /* Indigo */
+  --accent-glow: rgba(79, 70, 229, 0.15);
+  --accent-secondary: #4f46e5; /* Indigo */
   --success: #10b981;
   --error: #ef4444;
   --font-sans: 'Outfit', -apple-system, sans-serif;
