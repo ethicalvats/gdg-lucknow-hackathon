@@ -1342,6 +1342,9 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
   if (route === "/") {
     return (
       <div className="landing-container">
+        <div className="ambient-glow glow-1"></div>
+        <div className="ambient-glow glow-2"></div>
+        <div className="ambient-glow glow-3"></div>
         <div className="landing-hero">
           <h1>📚 UP Regional AI Vernacular Tutor</h1>
           <p>Lucknow Hazratganj Coaching Hub — State Board Exams Gateway</p>

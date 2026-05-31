@@ -1581,4 +1581,155 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ==========================================
+   AMBIENT GLOW & PROFESSIONAL DESIGN POLISH
+   ========================================== */
+.landing-container {
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.ambient-glow {
+  position: absolute;
+  width: 450px;
+  height: 450px;
+  border-radius: 50%;
+  filter: blur(140px);
+  opacity: 0.12;
+  pointer-events: none;
+  z-index: -1;
+  animation: floatGlow 20s infinite alternate ease-in-out;
+}
+
+.glow-1 {
+  background: var(--accent-primary);
+  top: -15%;
+  left: -15%;
+  animation-delay: 0s;
+}
+
+.glow-2 {
+  background: var(--accent-secondary);
+  bottom: -15%;
+  right: -15%;
+  animation-delay: 4s;
+}
+
+.glow-3 {
+  background: #c084fc;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.06;
+  width: 600px;
+  height: 600px;
+  animation: pulseScale 12s infinite alternate ease-in-out;
+}
+
+@keyframes floatGlow {
+  0% {
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+  100% {
+    transform: translateY(60px) scale(1.15) rotate(180deg);
+  }
+}
+
+@keyframes pulseScale {
+  0% {
+    transform: translate(-50%, -50%) scale(0.85);
+    opacity: 0.04;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.15);
+    opacity: 0.08;
+  }
+}
+
+/* Glass panel design polish */
+.glass-panel {
+  background: rgba(20, 18, 45, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.glass-panel.glow {
+  border-color: rgba(168, 85, 247, 0.3);
+  box-shadow: 0 0 30px rgba(168, 85, 247, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Button & Form Controls Upgrade */
+.input-key, .select-custom, textarea.input-key {
+  background: rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 8px !important;
+  color: #f3f4f6 !important;
+  padding: 0.65rem 0.9rem !important;
+  font-family: var(--font-sans) !important;
+  font-size: 0.9rem !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.input-key:focus, .select-custom:focus, textarea.input-key:focus {
+  border-color: var(--accent-primary) !important;
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.2) !important;
+  outline: none !important;
+}
+
+.btn-connect, .btn-back-home {
+  background: linear-gradient(135deg, var(--accent-primary) 0%, #7c3aed 100%) !important;
+  border: none !important;
+  border-radius: 8px !important;
+  color: white !important;
+  font-weight: 600 !important;
+  padding: 0.7rem 1.4rem !important;
+  cursor: pointer !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 4px 15px rgba(168, 85, 247, 0.25) !important;
+}
+
+.btn-connect:hover, .btn-back-home:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(168, 85, 247, 0.4) !important;
+  filter: brightness(1.1) !important;
+}
+
+.btn-connect:active, .btn-back-home:active {
+  transform: translateY(0) !important;
+}
+
+.btn-connect.disconnect {
+  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%) !important;
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.25) !important;
+}
+
+.btn-connect.disconnect:hover {
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4) !important;
+}
+
+/* Roster / CRUD Cards upgrade */
+.crud-list-item {
+  background: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-radius: 10px !important;
+  padding: 0.8rem 1rem !important;
+  transition: all 0.2s ease !important;
+}
+
+.crud-list-item:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(6, 182, 212, 0.25) !important;
+  transform: translateX(4px) !important;
+}
+
+/* Micro-animations and hover scales */
+.landing-card {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease, box-shadow 0.3s ease, background 0.3s ease !important;
+}
+
+.landing-card-btn {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
 
