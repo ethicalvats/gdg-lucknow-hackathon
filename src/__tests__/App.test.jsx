@@ -151,12 +151,19 @@ describe('Main App Component Routing and Flows', () => {
 
     // Verify Coordinator view header is present
     await waitFor(() => {
-      expect(screen.getByText('🏫 Coordinator Admin Hub')).toBeDefined();
+      expect(screen.getByText(/🏫 Coordinator Hub:/)).toBeDefined();
     });
 
-    // Verify state details loaded
+    // Verify state details loaded by switching tabs
+    const tutorsNavBtn = screen.getByText('👨‍🏫 Manage Tutors');
+    fireEvent.click(tutorsNavBtn);
     await waitFor(() => {
       expect(screen.getAllByText('Bhoutik AI').length).toBeGreaterThan(0);
+    });
+
+    const studentsNavBtn = screen.getByText('👥 Student Roster');
+    fireEvent.click(studentsNavBtn);
+    await waitFor(() => {
       expect(screen.getAllByText('Vikas Yadav').length).toBeGreaterThan(0);
     });
   });
@@ -192,11 +199,11 @@ describe('Main App Component Routing and Flows', () => {
     fireEvent.click(screen.getByText('Vikas Yadav'));
 
     await waitFor(() => {
-      expect(screen.getByText('📊 My Progress & Analytics (प्रगति विवरण)')).toBeDefined();
+      expect(screen.getByText('📈 View Progress')).toBeDefined();
     });
 
     // Click Analytics tab
-    const analyticsTabBtn = screen.getByText('📊 My Progress & Analytics (प्रगति विवरण)');
+    const analyticsTabBtn = screen.getByText('📈 View Progress');
     fireEvent.click(analyticsTabBtn);
 
     // Verify analytics components loaded

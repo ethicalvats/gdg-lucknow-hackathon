@@ -71,6 +71,8 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState(window.location.search);
   const [saveStatus, setSaveStatus] = useState("");
   const [error, setError] = useState(null);
+  const [coordinatorActiveTab, setCoordinatorActiveTab] = useState("dashboard");
+  const [syllabusCollapsed, setSyllabusCollapsed] = useState(false);
 
   function logDebug(direction, type, data) {
     const time = new Date().toLocaleTimeString();
@@ -1372,400 +1374,530 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
     const activeSelectedStudent = students.find(s => s.id === selectedStudentId);
     
     return (
-      <div className="app-container">
-        <header className="app-header">
-          <div>
-            <h1 className="clickable-title" onClick={() => navigateTo("/")}>🏫 Coordinator Admin Hub</h1>
-            <p>Manage Tutors, Register state-board Students, and Monitor Live Diagnostic Logs</p>
-          </div>
-          <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-            <button className="btn-back-home" onClick={() => navigateTo("/")}>
-              🔙 Main Gateway
-            </button>
-            {saveStatus && (
-              <span className="debug-badge received" style={{ background: "rgba(34, 197, 94, 0.2)", color: "#4ade80", fontSize: "0.8rem", textTransform: "none" }}>
-                {saveStatus}
-              </span>
-            )}
-          </div>
-        </header>
-
-        <main className="coordinator-layout three-column">
-          {/* Column 1: Config Settings & Tutor Templates Creator */}
-          <section className="glass-panel glow">
-            <div className="panel-header">
-              <h2>🛠️ 1. Global Setup & Tutors</h2>
+      <div className="app-container coordinator-page-container">
+        <div className="coordinator-main-wrapper">
+          {/* SIDEBAR NAVIGATION */}
+          <aside className="coordinator-sidebar">
+            <div className="sidebar-logo">
+              <span className="logo-icon">🏫</span>
+              <h2>Admin Hub</h2>
             </div>
-            <div className="panel-content">
-              <div className="settings-group">
-                <label>Gemini API Key (Saved on Server)</label>
-                <input
-                  type="password"
-                  className="input-key"
-                  placeholder={apiKey ? "••••••••••••••••" : "API Key empty..."}
-                  onChange={(e) => handleSaveApiKey(e.target.value)}
-                />
+            
+            <nav className="sidebar-nav">
+              <button 
+                className={`sidebar-link ${coordinatorActiveTab === "dashboard" ? "active" : ""}`}
+                onClick={() => setCoordinatorActiveTab("dashboard")}
+              >
+                🏠 Dashboard
+              </button>
+              <button 
+                className={`sidebar-link ${coordinatorActiveTab === "tutors" ? "active" : ""}`}
+                onClick={() => setCoordinatorActiveTab("tutors")}
+              >
+                👨‍🏫 Manage Tutors
+              </button>
+              <button 
+                className={`sidebar-link ${coordinatorActiveTab === "students" ? "active" : ""}`}
+                onClick={() => setCoordinatorActiveTab("students")}
+              >
+                👥 Student Roster
+              </button>
+              <button 
+                className={`sidebar-link ${coordinatorActiveTab === "monitor" ? "active" : ""}`}
+                onClick={() => setCoordinatorActiveTab("monitor")}
+              >
+                📈 Live Monitor
+              </button>
+            </nav>
+            
+            <div className="sidebar-footer">
+              <button className="btn-back-home" style={{ width: "100%" }} onClick={() => navigateTo("/")}>
+                🔙 Main Gateway
+              </button>
+            </div>
+          </aside>
+
+          {/* MAIN CONTENT AREA */}
+          <div className="coordinator-content-area">
+            <header className="app-header" style={{ marginBottom: "1.5rem" }}>
+              <div>
+                <h1 className="clickable-title" onClick={() => navigateTo("/")}>
+                  🏫 Coordinator Hub: {coordinatorActiveTab.charAt(0).toUpperCase() + coordinatorActiveTab.slice(1)}
+                </h1>
+                <p>Vernacular AI Tutor Coordinator Command Center</p>
               </div>
-
-              <div className="tutor-templates-section">
-                <h3>Created Tutors ({tutors.length})</h3>
-                <div className="list-card-container">
-                  {tutors.length === 0 ? (
-                    <p className="no-data-text">कोई ट्यूटर नहीं बना है। नीचे नया ट्यूटर बनाएं।</p>
-                  ) : (
-                    tutors.map(t => (
-                      <div key={t.id} className="crud-list-item">
-                        <div className="crud-item-info">
-                          <strong>{t.name}</strong>
-                          <span>{t.dialect === "awadhi" ? "अवधी" : t.dialect === "hindi" ? "हिंदी" : "Auto"} | {t.pace}</span>
-                        </div>
-                        <button className="btn-crud-delete" onClick={() => handleDeleteTutor(t.id)}>❌</button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              <form onSubmit={handleCreateTutor} className="tutor-create-form border-top">
-                <h3>Create New Tutor Template</h3>
-                <div className="settings-group">
-                  <label>Tutor Name</label>
-                  <input
-                    type="text"
-                    className="input-key"
-                    required
-                    value={tutorName}
-                    onChange={(e) => setTutorName(e.target.value)}
-                    placeholder="उदा. भौतिकी गुरु"
-                  />
-                </div>
-                <div className="settings-row">
-                  <div className="settings-group half-width">
-                    <label>Subject (विषय)</label>
-                    <select className="input-key select-custom" value={subject} onChange={(e) => handleSubjectChange(e.target.value)}>
-                      <option value="Physics">Physics (भौतिकी)</option>
-                      <option value="Chemistry">Chemistry (रसायन शास्त्र)</option>
-                      <option value="Mathematics">Mathematics (गणित)</option>
-                      <option value="Biology">Biology (जीव विज्ञान)</option>
-                      <option value="English">English (अंग्रेजी)</option>
-                      <option value="custom">Other / Custom (अन्य)</option>
-                    </select>
-                  </div>
-                  <div className="settings-group half-width">
-                    <label>Target Board (standard)</label>
-                    <input
-                      type="text"
-                      className="input-key"
-                      required
-                      value={board}
-                      onChange={(e) => setBoard(e.target.value)}
-                      placeholder="उदा. UP Board Class 11"
-                    />
-                  </div>
-                </div>
-
-                {subject === "custom" && (
-                  <div className="settings-group">
-                    <label>Custom Subject Name</label>
-                    <input
-                      type="text"
-                      className="input-key"
-                      required
-                      value={customSubjectName}
-                      onChange={(e) => setCustomSubjectName(e.target.value)}
-                      placeholder="उदा. इतिहास"
-                    />
-                  </div>
+              <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+                {saveStatus && (
+                  <span className="debug-badge received" style={{ background: "rgba(34, 197, 94, 0.2)", color: "#4ade80", fontSize: "0.8rem", textTransform: "none" }}>
+                    {saveStatus}
+                  </span>
                 )}
+              </div>
+            </header>
 
-                <div className="settings-group">
-                  <label>Custom Instructions Persona Overlay</label>
-                  <textarea
-                    className="input-key text-area-instructions"
-                    rows={2}
-                    value={tutorInstructions}
-                    onChange={(e) => setTutorInstructions(e.target.value)}
-                    placeholder="उदा. 'उदार बनें, हजरतगंज गोमती नदी के उदाहरणों का प्रयोग करें...'"
-                  />
-                </div>
-                <div className="settings-row">
-                  <div className="settings-group half-width">
-                    <label>Dialect</label>
-                    <select className="input-key select-custom" value={defaultDialect} onChange={(e) => setDefaultDialect(e.target.value)}>
-                      <option value="awadhi">Awadhi (अवधी)</option>
-                      <option value="bhojpuri">Bhojpuri (भोजपुरी)</option>
-                      <option value="hindi">Hindi (हिंदी)</option>
-                      <option value="auto">Auto-Adapt (स्वचालित)</option>
-                    </select>
-                  </div>
-                  <div className="settings-group half-width">
-                    <label>Pace</label>
-                    <select className="input-key select-custom" value={defaultPace} onChange={(e) => setDefaultPace(e.target.value)}>
-                      <option value="slow">Slow (धीमी)</option>
-                      <option value="normal">Normal (सामान्य)</option>
-                      <option value="fast">Fast (तेज़)</option>
-                    </select>
-                  </div>
-                </div>
+            {error && <div className="alert-error">⚠️ {error}</div>}
 
-                <div className="settings-group lesson-builder-box" style={{ marginTop: "0.5rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <label>Lesson Roadmap Steps</label>
-                    <button type="button" className="btn-text-only" onClick={restoreDefaultLessonPlan}>Restore Defaults</button>
-                  </div>
-                  
-                  <div className="lesson-plan-list small-height">
-                    {lessonPlan.map((step, idx) => (
-                      <div key={idx} className="step-builder-item">
-                        <span className="step-num">{idx + 1}</span>
-                        <span className="step-text">{step}</span>
-                        <button type="button" className="btn-delete-step" onClick={() => handleDeleteStep(idx)}>❌</button>
+            <main className="coordinator-tab-content">
+              {/* 1. DASHBOARD OVERVIEW */}
+              {coordinatorActiveTab === "dashboard" && (
+                <div className="dashboard-overview-grid" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1.25rem" }}>
+                    {/* Stats Cards */}
+                    <div className="stat-card glass-panel" style={{ padding: "1.25rem", display: "flex", alignItems: "center", gap: "1rem" }}>
+                      <span className="stat-icon" style={{ fontSize: "2.5rem" }}>👨‍🏫</span>
+                      <div className="stat-info">
+                        <h3 style={{ margin: 0, fontSize: "0.9rem", color: "var(--text-secondary)" }}>Tutor Templates</h3>
+                        <p className="stat-number" style={{ margin: 0, fontSize: "1.8rem", fontWeight: 700 }}>{tutors.length}</p>
                       </div>
-                    ))}
+                    </div>
+
+                    <div className="stat-card glass-panel" style={{ padding: "1.25rem", display: "flex", alignItems: "center", gap: "1rem" }}>
+                      <span className="stat-icon" style={{ fontSize: "2.5rem" }}>👥</span>
+                      <div className="stat-info">
+                        <h3 style={{ margin: 0, fontSize: "0.9rem", color: "var(--text-secondary)" }}>Students</h3>
+                        <p className="stat-number" style={{ margin: 0, fontSize: "1.8rem", fontWeight: 700 }}>{students.length}</p>
+                      </div>
+                    </div>
+
+                    <div className="stat-card glass-panel" style={{ padding: "1.25rem", display: "flex", alignItems: "center", gap: "1rem" }}>
+                      <span className="stat-icon" style={{ fontSize: "2.5rem" }}>⚡</span>
+                      <div className="stat-info">
+                        <h3 style={{ margin: 0, fontSize: "0.9rem", color: "var(--text-secondary)" }}>Active Paths</h3>
+                        <p className="stat-number" style={{ margin: 0, fontSize: "1.8rem", fontWeight: 700 }}>{students.filter(s => s.assignedTutorId).length}</p>
+                      </div>
+                    </div>
+
+                    <div className="stat-card glass-panel" style={{ padding: "1.25rem", display: "flex", alignItems: "center", gap: "1rem" }}>
+                      <span className="stat-icon" style={{ fontSize: "2.5rem" }}>📊</span>
+                      <div className="stat-info">
+                        <h3 style={{ margin: 0, fontSize: "0.9rem", color: "var(--text-secondary)" }}>Average Score</h3>
+                        <p className="stat-number" style={{ margin: 0, fontSize: "1.8rem", fontWeight: 700 }}>
+                          {students.length > 0
+                            ? Math.round(students.reduce((acc, s) => acc + s.quizScore, 0) / students.length)
+                            : 0}%
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="add-step-form">
-                    <input
-                      type="text"
-                      className="input-key add-step-input"
-                      placeholder="नया पाठ चरण..."
-                      value={newStepText}
-                      onChange={(e) => setNewStepText(e.target.value)}
-                    />
-                    <button type="button" className="btn-add-step" onClick={(e) => handleAddStep(e)}>➕</button>
+
+                  {/* Summary lists or visual greeting */}
+                  <div className="dashboard-welcome-banner glass-panel" style={{ padding: "1.5rem", borderRadius: "12px" }}>
+                    <h2 style={{ marginTop: 0 }}>Welcome to the Vernacular AI Admin Panel!</h2>
+                    <p style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>
+                      Use the navigation sidebar to configure classroom templates, manage regional students, 
+                      and monitor live dialect classrooms in real-time.
+                    </p>
+                    <div className="api-key-setup-box" style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "1rem", marginTop: "1rem" }}>
+                      <label style={{ fontSize: "0.9rem", fontWeight: 600, display: "block", marginBottom: "0.5rem" }}>Gemini API Key Setup:</label>
+                      <input
+                        type="password"
+                        className="input-key"
+                        placeholder={apiKey ? "•••••••••••••••• (Saved on Server)" : "Enter Gemini API Key..."}
+                        onChange={(e) => handleSaveApiKey(e.target.value)}
+                        style={{ width: "100%", maxWidth: "360px" }}
+                      />
+                    </div>
                   </div>
                 </div>
+              )}
 
-                <button type="submit" className="btn-connect" style={{ marginTop: "0.75rem", width: "100%" }}>
-                  ➕ Create Tutor Template
-                </button>
-              </form>
-            </div>
-          </section>
+              {/* 2. MANAGE TUTORS */}
+              {coordinatorActiveTab === "tutors" && (
+                <div className="coordinator-tutors-layout" style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr", gap: "1.5rem" }}>
+                  {/* Left Column: Tutors List */}
+                  <div className="glass-panel" style={{ padding: "1.25rem" }}>
+                    <div className="panel-header" style={{ borderBottom: "none", padding: "0 0 1rem 0" }}>
+                      <h3 style={{ margin: 0 }}>Created Tutors ({tutors.length})</h3>
+                    </div>
+                    <div className="list-card-container">
+                      {tutors.length === 0 ? (
+                        <p className="no-data-text">कोई ट्यूटर नहीं बना है। नीचे नया ट्यूटर बनाएं।</p>
+                      ) : (
+                        tutors.map(t => (
+                          <div key={t.id} className="crud-list-item">
+                            <div className="crud-item-info">
+                              <strong>{t.name}</strong>
+                              <span>{t.subject || "Physics"} ({t.board || "UP Board"}) | {t.dialect === "awadhi" ? "अवधी" : t.dialect === "bhojpuri" ? "भोजपुरी" : "हिंदी"} | {t.pace}</span>
+                            </div>
+                            <button className="btn-crud-delete" onClick={() => handleDeleteTutor(t.id)}>❌</button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
 
-          {/* Column 2: Students registry & assignments manager */}
-          <section className="glass-panel glow">
-            <div className="panel-header">
-              <h2>👥 2. Student Roster & Assignments</h2>
-            </div>
-            <div className="panel-content">
-              <form onSubmit={handleCreateStudent} className="student-register-form">
-                <h3>Register Student Profile</h3>
-                <div className="add-step-form">
-                  <input
-                    type="text"
-                    className="input-key"
-                    required
-                    placeholder="छात्र का नाम लिखें..."
-                    value={newStudentName}
-                    onChange={(e) => setNewStudentName(e.target.value)}
-                  />
-                  <button type="submit" className="btn-add-step">➕ Register</button>
-                </div>
-              </form>
+                  {/* Right Column: Create Tutor Form */}
+                  <div className="glass-panel" style={{ padding: "1.25rem" }}>
+                    <form onSubmit={handleCreateTutor} className="tutor-create-form" style={{ marginTop: 0 }}>
+                      <h3 style={{ marginTop: 0 }}>Create New Tutor Template</h3>
+                      
+                      <div className="settings-group">
+                        <label>Tutor Name</label>
+                        <input
+                          type="text"
+                          className="input-key"
+                          placeholder="उदा. भौतिकी गुरु"
+                          required
+                          value={tutorName}
+                          onChange={(e) => setTutorName(e.target.value)}
+                        />
+                      </div>
 
-              <div className="student-assignments-section" style={{ marginTop: "1rem" }}>
-                <h3>Assigned Students & Tutors</h3>
-                <div className="list-card-container scrollable-roster">
-                  {students.length === 0 ? (
-                    <p className="no-data-text">कोई छात्र पंजीकृत नहीं है। ऊपर नया छात्र जोड़ें।</p>
-                  ) : (
-                    students.map(s => (
-                      <div key={s.id} className="crud-list-item assign-row">
-                        <div className="crud-item-info">
-                          <strong>{s.name}</strong>
-                          <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>ID: {s.id}</span>
-                        </div>
-                        <div className="assign-controls">
-                          <select
-                            value={s.assignedTutorId || ""}
-                            onChange={(e) => handleAssignTutor(s.id, e.target.value)}
-                            className="input-key select-custom select-inline"
-                          >
-                            <option value="">-- No Tutor --</option>
-                            {tutors.map(t => (
-                              <option key={t.id} value={t.id}>{t.name}</option>
-                            ))}
+                      <div className="settings-row" style={{ gap: "0.5rem" }}>
+                        <div className="settings-group half-width">
+                          <label>Subject (विषय)</label>
+                          <select className="input-key select-custom" value={subject} onChange={(e) => handleSubjectChange(e.target.value)}>
+                            <option value="Physics">Physics (भौतिकी)</option>
+                            <option value="Chemistry">Chemistry (रसायन शास्त्र)</option>
+                            <option value="Mathematics">Mathematics (गणित)</option>
+                            <option value="Biology">Biology (जीव विज्ञान)</option>
+                            <option value="English">English (अंग्रेजी)</option>
+                            <option value="custom">Other / Custom (अन्य)</option>
                           </select>
-                          <button className="btn-crud-delete" onClick={() => handleDeleteStudent(s.id)}>❌</button>
+                        </div>
+                        <div className="settings-group half-width">
+                          <label>Target Board (standard)</label>
+                          <input
+                            type="text"
+                            className="input-key"
+                            placeholder="उदा. UP Board Class 11"
+                            required
+                            value={board}
+                            onChange={(e) => setBoard(e.target.value)}
+                          />
                         </div>
                       </div>
-                    ))
-                  )}
+
+                      {subject === "custom" && (
+                        <div className="settings-group">
+                          <label>Custom Subject Name</label>
+                          <input
+                            type="text"
+                            className="input-key"
+                            placeholder="उदा. सामाजिक विज्ञान"
+                            value={customSubjectName}
+                            onChange={(e) => setCustomSubjectName(e.target.value)}
+                          />
+                        </div>
+                      )}
+
+                      <div className="settings-group">
+                        <label>Custom Instructions Persona Overlay</label>
+                        <textarea
+                          className="input-key text-area-instructions"
+                          placeholder="उदा. 'उदार बनें, हजरतगंज गोमती नदी के उदाहरणों का प्रयोग करें...'"
+                          rows="2"
+                          value={tutorInstructions}
+                          onChange={(e) => setTutorInstructions(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="settings-row" style={{ gap: "0.5rem" }}>
+                        <div className="settings-group half-width">
+                          <label>Dialect</label>
+                          <select className="input-key select-custom" value={defaultDialect} onChange={(e) => setDefaultDialect(e.target.value)}>
+                            <option value="awadhi">Awadhi (अवधी)</option>
+                            <option value="bhojpuri">Bhojpuri (भोजपुरी)</option>
+                            <option value="hindi">Hindi (हिंदी)</option>
+                            <option value="auto">Auto-Adapt (स्वचालित)</option>
+                          </select>
+                        </div>
+                        <div className="settings-group half-width">
+                          <label>Pace</label>
+                          <select className="input-key select-custom" value={defaultPace} onChange={(e) => setDefaultPace(e.target.value)}>
+                            <option value="slow">Slow (धीमी)</option>
+                            <option value="normal">Normal (सामान्य)</option>
+                            <option value="fast">Fast (तेज़)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="settings-group lesson-builder-box" style={{ marginTop: "0.5rem" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <label>Lesson Roadmap Steps</label>
+                          <button type="button" className="btn-text-only" onClick={restoreDefaultLessonPlan}>Restore Defaults</button>
+                        </div>
+                        <div className="lesson-plan-list small-height">
+                          {lessonPlan.map((step, idx) => (
+                            <div key={idx} className="step-builder-item">
+                              <span className="step-num">{idx + 1}</span>
+                              <span className="step-text">{step}</span>
+                              <button type="button" className="btn-delete-step" onClick={() => handleDeleteStep(idx)}>❌</button>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="add-step-form">
+                          <input
+                            type="text"
+                            className="input-key add-step-input"
+                            placeholder="नया पाठ चरण..."
+                            value={newStepText}
+                            onChange={(e) => setNewStepText(e.target.value)}
+                          />
+                          <button type="button" className="btn-add-step" onClick={handleAddStep}>➕</button>
+                        </div>
+                      </div>
+
+                      <button type="submit" className="btn-connect" style={{ marginTop: "0.75rem", width: "100%" }}>
+                        ➕ Create Tutor Template
+                      </button>
+                    </form>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </section>
+              )}
 
-          {/* Column 3: Live student monitor & reports exporter */}
-          <section className="glass-panel">
-            <div className="panel-header">
-              <h2>📊 3. Live Diagnostics Dashboard</h2>
-            </div>
-            <div className="panel-content">
-              <div className="settings-group">
-                <label>Select Student to Monitor</label>
-                <select
-                  value={selectedStudentId}
-                  onChange={(e) => setSelectedStudentId(e.target.value)}
-                  className="input-key select-custom"
-                >
-                  <option value="">-- Select Active Student --</option>
-                  {students.map(s => (
-                    <option key={s.id} value={s.id}>{s.name} {s.assignedTutorId ? "🎯" : ""}</option>
-                  ))}
-                </select>
-              </div>
+              {/* 3. STUDENT ROSTER */}
+              {coordinatorActiveTab === "students" && (
+                <div className="coordinator-students-layout" style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr", gap: "1.5rem" }}>
+                  {/* Left Column: Register & Student Roster */}
+                  <div className="glass-panel" style={{ padding: "1.25rem" }}>
+                    <form onSubmit={handleCreateStudent} className="student-register-form">
+                      <h3 style={{ marginTop: 0 }}>Register Student Profile</h3>
+                      <div className="add-step-form">
+                        <input
+                          type="text"
+                          className="input-key"
+                          placeholder="छात्र का नाम लिखें..."
+                          required
+                          value={newStudentName}
+                          onChange={(e) => setNewStudentName(e.target.value)}
+                        />
+                        <button type="submit" className="btn-add-step">➕ Register</button>
+                      </div>
+                    </form>
 
-              {activeSelectedStudent ? (
-                <div className="dashboard-content monitor-card">
-                  <div className="student-profile-header">
-                    <div>
-                      <h2>{activeSelectedStudent.name}</h2>
-                      <span className="tutor-assigned-tag">
-                        🎯 Tutor: {tutors.find(t => t.id === activeSelectedStudent.assignedTutorId)?.name || "Unassigned"}
-                      </span>
-                    </div>
-                    <div className="quiz-score-circle">
-                      <div className="score-val">{activeSelectedStudent.quizScore || 0}%</div>
-                      <div className="score-lbl">Quiz Score</div>
+                    <div className="student-assignments-section" style={{ marginTop: "1.5rem" }}>
+                      <h3>Registered Roster & Tutor Assign</h3>
+                      <div className="list-card-container scrollable-roster" style={{ maxHeight: "400px" }}>
+                        {students.length === 0 ? (
+                          <p className="no-data-text">कोई छात्र पंजीकृत नहीं है। ऊपर नया छात्र जोड़ें।</p>
+                        ) : (
+                          students.map(s => (
+                            <div key={s.id} className="crud-list-item assign-row">
+                              <div className="crud-item-info">
+                                <strong>{s.name}</strong>
+                                <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>ID: {s.id}</span>
+                              </div>
+                              <div className="assign-controls">
+                                <select
+                                  className="input-key select-custom select-inline"
+                                  value={s.assignedTutorId || ""}
+                                  onChange={(e) => handleAssignTutor(s.id, e.target.value)}
+                                >
+                                  <option value="">-- No Tutor --</option>
+                                  {tutors.map(t => (
+                                    <option key={t.id} value={t.id}>{t.name} ({t.subject || "Physics"})</option>
+                                  ))}
+                                </select>
+                                <button className="btn-crud-delete" onClick={() => handleDeleteStudent(s.id)}>❌</button>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Progress bar */}
-                  <div className="dashboard-progress-section">
-                    {(() => {
-                      const tutorObj = tutors.find(t => t.id === activeSelectedStudent.assignedTutorId);
-                      const steps = activeSelectedStudent.lessonPlan && activeSelectedStudent.lessonPlan.length > 0 
-                        ? activeSelectedStudent.lessonPlan 
-                        : (tutorObj ? tutorObj.lessonPlan : []);
-                      const stepIdx = activeSelectedStudent.currentStepIndex || 0;
-                      const percent = steps.length > 0 ? Math.min(100, Math.round(((stepIdx + 1) / steps.length) * 100)) : 0;
-                      return (
-                        <>
+                  {/* Right Column: Custom Student Lesson Plan Customizer */}
+                  <div className="glass-panel" style={{ padding: "1.25rem" }}>
+                    <h3 style={{ marginTop: 0 }}>Modify Individual Student Roadmaps</h3>
+                    <div className="settings-group" style={{ marginTop: "1rem" }}>
+                      <label>Choose Student to Customize Plan</label>
+                      <select 
+                        className="input-key select-custom" 
+                        value={selectedStudentId} 
+                        onChange={(e) => setSelectedStudentId(e.target.value)}
+                      >
+                        <option value="">-- Choose Student --</option>
+                        {students.map(s => (
+                          <option key={s.id} value={s.id}>{s.name} {s.assignedTutorId ? `(Tutor: ${tutors.find(t => t.id === s.assignedTutorId)?.name || 'Assigned'})` : '(No Tutor)'}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {activeSelectedStudent ? (
+                      <div className="student-customizer-box" style={{ marginTop: "1rem" }}>
+                        <h4>Checklist Roadmap for {activeSelectedStudent.name}</h4>
+                        
+                        <div className="settings-row" style={{ gap: "0.5rem", margin: "1rem 0" }}>
+                          <div className="settings-group half-width">
+                            <label>Dialect Override</label>
+                            <select 
+                              className="input-key select-custom" 
+                              value={activeSelectedStudent.dialect || "awadhi"} 
+                              onChange={(e) => handleUpdateStudentLessonPlan(activeSelectedStudent.id, activeSelectedStudent.lessonPlan, e.target.value, activeSelectedStudent.pace)}
+                            >
+                              <option value="awadhi">Awadhi (अवधी)</option>
+                              <option value="bhojpuri">Bhojpuri (भोजपुरी)</option>
+                              <option value="hindi">Hindi (हिंदी)</option>
+                              <option value="auto">Auto-Adapt</option>
+                            </select>
+                          </div>
+                          <div className="settings-group half-width">
+                            <label>Pace Override</label>
+                            <select 
+                              className="input-key select-custom" 
+                              value={activeSelectedStudent.pace || "normal"} 
+                              onChange={(e) => handleUpdateStudentLessonPlan(activeSelectedStudent.id, activeSelectedStudent.lessonPlan, activeSelectedStudent.dialect, e.target.value)}
+                            >
+                              <option value="slow">Slow</option>
+                              <option value="normal">Normal</option>
+                              <option value="fast">Fast</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="lesson-plan-list small-height" style={{ maxHeight: "250px" }}>
+                          {(!activeSelectedStudent.lessonPlan || activeSelectedStudent.lessonPlan.length === 0) ? (
+                            <p className="no-data-text">No custom lesson plan steps. Please assign a tutor first.</p>
+                          ) : (
+                            activeSelectedStudent.lessonPlan.map((step, idx) => (
+                              <div key={idx} className="step-builder-item">
+                                <span className="step-num">{idx + 1}</span>
+                                <span className="step-text" style={{ fontSize: "0.85rem" }}>{step}</span>
+                                <button 
+                                  type="button" 
+                                  className="btn-delete-step" 
+                                  onClick={() => {
+                                    const newPlan = activeSelectedStudent.lessonPlan.filter((_, i) => i !== idx);
+                                    handleUpdateStudentLessonPlan(activeSelectedStudent.id, newPlan);
+                                  }}
+                                >
+                                  ❌
+                                </button>
+                              </div>
+                            ))
+                          )}
+                        </div>
+
+                        <div className="add-step-form" style={{ marginTop: "1rem" }}>
+                          <input
+                            type="text"
+                            className="input-key add-step-input"
+                            placeholder="नया पाठ चरण जोड़ें..."
+                            value={newStudentStepText}
+                            onChange={(e) => setNewStudentStepText(e.target.value)}
+                          />
+                          <button 
+                            type="button" 
+                            className="btn-add-step" 
+                            onClick={() => {
+                              if (newStudentStepText.trim()) {
+                                const newPlan = [...(activeSelectedStudent.lessonPlan || []), newStudentStepText.trim()];
+                                handleUpdateStudentLessonPlan(activeSelectedStudent.id, newPlan);
+                                setNewStudentStepText("");
+                              }
+                            }}
+                          >
+                            ➕ Add Step
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="no-data-text" style={{ marginTop: "1rem" }}>Please select a student from the dropdown menu to tune their learning roadmap.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 4. LIVE MONITORING */}
+              {coordinatorActiveTab === "monitor" && (
+                <div className="coordinator-monitor-layout" style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr", gap: "1.5rem" }}>
+                  {/* Left Column: Diagnostics Report */}
+                  <div className="glass-panel" style={{ padding: "1.25rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+                    <div className="settings-group">
+                      <label>Choose Student to Monitor</label>
+                      <select 
+                        className="input-key select-custom" 
+                        value={selectedStudentId} 
+                        onChange={(e) => setSelectedStudentId(e.target.value)}
+                      >
+                        <option value="">-- Choose Student --</option>
+                        {students.map(s => (
+                          <option key={s.id} value={s.id}>{s.name} 🎯</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {activeSelectedStudent ? (
+                      <>
+                        {/* Summary */}
+                        <div className="diagnostics-card flex-grow-card" style={{ display: "flex", flexDirection: "column" }}>
+                          <h3 style={{ margin: 0, paddingBottom: "0.5rem" }}>📝 Live Qualitative AI Report</h3>
+                          <div className="summary-text-box" style={{ maxHeight: "none", flexGrow: 1 }}>
+                            {activeSelectedStudent.diagnostics || "रिपोर्ट अभी खाली है।"}
+                          </div>
+                        </div>
+
+                        <div style={{ display: "flex", gap: "0.5rem" }}>
+                          <button 
+                            className="btn-connect" 
+                            onClick={() => exportCoordinatorStudentReport(activeSelectedStudent)}
+                            style={{ flexGrow: 1 }}
+                          >
+                            📥 Save Report
+                          </button>
+                          <button 
+                            className="btn-connect disconnect" 
+                            onClick={() => handleResetStudentProgress(activeSelectedStudent.id)}
+                            style={{ flexGrow: 1 }}
+                          >
+                            🔄 Reset Student
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="no-data-text">Select a student from the dropdown menu to monitor logs.</p>
+                    )}
+                  </div>
+
+                  {/* Right Column: Live Status & Prompts */}
+                  <div className="glass-panel" style={{ padding: "1.25rem" }}>
+                    {activeSelectedStudent ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+                        <h3 style={{ marginTop: 0 }}>Live Status for {activeSelectedStudent.name}</h3>
+
+                        {/* Checklist Progress */}
+                        <div className="dashboard-progress-section">
                           <div className="progress-labels">
-                            <span>Lesson Checklist</span>
-                            <span>Step {stepIdx + 1} of {steps.length}</span>
+                            <span>Syllabus Completion</span>
+                            <span>
+                              {activeSelectedStudent.lessonPlan && activeSelectedStudent.lessonPlan.length > 0
+                                ? Math.min(100, Math.round(((activeSelectedStudent.currentStepIndex || 0) + 1) / activeSelectedStudent.lessonPlan.length * 100))
+                                : 0}%
+                            </span>
                           </div>
                           <div className="progress-track-bg">
-                            <div className="progress-fill" style={{ width: `${percent}%` }} />
+                            <div 
+                              className="progress-fill" 
+                              style={{ 
+                                width: `${activeSelectedStudent.lessonPlan && activeSelectedStudent.lessonPlan.length > 0
+                                  ? Math.min(100, Math.round(((activeSelectedStudent.currentStepIndex || 0) + 1) / activeSelectedStudent.lessonPlan.length * 100))
+                                  : 0}%` 
+                              }} 
+                            />
                           </div>
-                          <p className="active-step-hint">
-                            <strong>Active Step:</strong> {steps[stepIdx] || "Not Started"}
+                          <p className="active-step-hint" style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "0.5rem" }}>
+                            <strong>Active Step:</strong> {activeSelectedStudent.lessonPlan ? activeSelectedStudent.lessonPlan[activeSelectedStudent.currentStepIndex || 0] : "None"}
                           </p>
-                        </>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Gaps */}
-                  <div className="diagnostics-card">
-                    <h3>⚠️ Diagnosed Learning Gaps</h3>
-                    {!activeSelectedStudent.gaps || activeSelectedStudent.gaps.length === 0 ? (
-                      <p className="no-data-text">कोई कमजोरी अभी रिपोर्ट नहीं की गई है।</p>
-                    ) : (
-                      <div className="badges-container">
-                        {activeSelectedStudent.gaps.map((gap, i) => (
-                          <span key={i} className="badge gap-badge">🔍 {gap}</span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Strengths */}
-                  <div className="diagnostics-card">
-                    <h3>✅ Mastered Strengths</h3>
-                    {!activeSelectedStudent.strengths || activeSelectedStudent.strengths.length === 0 ? (
-                      <p className="no-data-text">कोई ताकत अभी रिपोर्ट नहीं की गई है।</p>
-                    ) : (
-                      <div className="badges-container">
-                        {activeSelectedStudent.strengths.map((str, i) => (
-                          <span key={i} className="badge strength-badge">⚡ {str}</span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Student-Level Tuning Panel */}
-                  <div className="diagnostics-card tuning-card">
-                    <h3>⚙️ Student-Level Lesson Plan & Tuning</h3>
-                    
-                    {/* Dialect and Pace Tuning */}
-                    <div className="settings-row" style={{ gap: "0.5rem", marginBottom: "0.75rem" }}>
-                      <div className="settings-group half-width">
-                        <label>Dialect (बोली)</label>
-                        <select 
-                          className="input-key select-custom" 
-                          value={activeSelectedStudent.dialect || tutors.find(t => t.id === activeSelectedStudent.assignedTutorId)?.dialect || "awadhi"} 
-                          onChange={(e) => handleUpdateStudentLessonPlan(activeSelectedStudent.id, activeSelectedStudent.lessonPlan || [], e.target.value, activeSelectedStudent.pace || "normal")}
-                        >
-                          <option value="awadhi">Awadhi (अवधी)</option>
-                          <option value="bhojpuri">Bhojpuri (भोजपुरी)</option>
-                          <option value="hindi">Hindi (हिंदी)</option>
-                          <option value="auto">Auto-Adapt (स्वचालित)</option>
-                        </select>
-                      </div>
-                      <div className="settings-group half-width">
-                        <label>Pace (गति)</label>
-                        <select 
-                          className="input-key select-custom" 
-                          value={activeSelectedStudent.pace || tutors.find(t => t.id === activeSelectedStudent.assignedTutorId)?.pace || "normal"} 
-                          onChange={(e) => handleUpdateStudentLessonPlan(activeSelectedStudent.id, activeSelectedStudent.lessonPlan || [], activeSelectedStudent.dialect || "awadhi", e.target.value)}
-                        >
-                          <option value="slow">Slow (धीमी)</option>
-                          <option value="normal">Normal (सामान्य)</option>
-                          <option value="fast">Fast (तेज़)</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Lesson Plan Steps editor */}
-                    <div className="student-checklist-tuner" style={{ marginBottom: "0.75rem" }}>
-                      <label style={{ fontSize: "0.85rem", color: "var(--text-secondary)", fontWeight: 500 }}>Tune Student Roadmap Steps</label>
-                      <div className="lesson-plan-list small-height" style={{ maxHeight: "140px", marginTop: "0.25rem" }}>
-                        {(() => {
-                          const tutorObj = tutors.find(t => t.id === activeSelectedStudent.assignedTutorId);
-                          const planSteps = activeSelectedStudent.lessonPlan && activeSelectedStudent.lessonPlan.length > 0 
-                            ? activeSelectedStudent.lessonPlan 
-                            : (tutorObj ? tutorObj.lessonPlan : []);
-                          
-                          return planSteps.map((step, idx) => (
-                            <div key={idx} className="step-builder-item" style={{ padding: "0.3rem 0.5rem" }}>
-                              <span className="step-num">{idx + 1}</span>
-                              <span className="step-text" style={{ fontSize: "0.8rem" }}>{step}</span>
-                              <div style={{ display: "flex", gap: "0.25rem" }}>
-                                <button 
-                                  type="button" 
-                                  disabled={idx === 0} 
-                                  onClick={() => {
-                                    const newPlan = [...planSteps];
-                                    const temp = newPlan[idx];
-                                    newPlan[idx] = newPlan[idx - 1];
-                                    newPlan[idx - 1] = temp;
-                                    handleUpdateStudentLessonPlan(activeSelectedStudent.id, newPlan);
-                                  }}
-                                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.75rem" }}
-                                >
-                                  ⬆️
-                                </button>
-                                <button 
-                                  type="button" 
-                                  disabled={idx === planSteps.length - 1} 
-                                  onClick={() => {
-                                    const newPlan = [...planSteps];
-                                    const temp = newPlan[idx];
-                                    newPlan[idx] = newPlan[idx + 1];
-                                    newPlan[idx + 1] = temp;
-                                    handleUpdateStudentLessonPlan(activeSelectedStudent.id, newPlan);
-                                  }}
-                                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.75rem" }}
-                                >
-                                  ⬇️
-                                </button>
-                                <button 
-                                  type="button" 
-                                  onClick={() => {
-                                    const newPlan = planSteps.filter((_, i) => i !== idx);
-                                    handleUpdateStudentLessonPlan(activeSelectedStudent.id, newPlan);
+                        </div>
+                        <div className="lesson-plan-list small-height" style={{ maxHeight: "250px", marginTop: "0.5rem" }}>
+                          {(() => {
+                            const tutorObj = tutors.find(t => t.id === activeSelectedStudent.assignedTutorId);
+                            const currentPlan = activeSelectedStudent.lessonPlan && activeSelectedStudent.lessonPlan.length > 0 
+                              ? activeSelectedStudent.lessonPlan 
+                              : (tutorObj ? tutorObj.lessonPlan : []);
+                            return currentPlan.map((step, idx) => (
+                              <div key={idx} className="step-builder-item-wrapper">
+                                <div className="step-builder-item">
+                                  <span className="step-num">{idx + 1}</span>
+                                  <span className="step-text" style={{ fontSize: "0.85rem" }}>{step}</span>
+                                  <button 
+                                    type="button" 
+                                    className="btn-delete-step" 
+                                    onClick={() => {
+                                      const newPlan = currentPlan.filter((_, i) => i !== idx);
+                                      handleUpdateStudentLessonPlan(activeSelectedStudent.id, newPlan);
                                   }}
                                   style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.75rem" }}
                                 >
@@ -1805,7 +1937,6 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
                           ➕
                         </button>
                       </div>
-                    </div>
 
                     {/* Coordinator Live Prompt Note to Tutor */}
                     <div className="coordinator-live-prompt">
@@ -1829,7 +1960,6 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
                         </button>
                       </div>
                     </div>
-                  </div>
 
                   {/* Summary */}
                   <div className="diagnostics-card flex-grow-card">
@@ -1860,9 +1990,12 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
                 </div>
               )}
             </div>
-          </section>
-        </main>
+          </div>
+        )}
+      </main>
       </div>
+    </div>
+  </div>
     );
   }
 
@@ -1945,212 +2078,77 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
 
         {error && <div className="alert-error">⚠️ {error}</div>}
 
-        <main className="main-grid">
-          {/* Left Column: Student Voice Panel */}
-          <section className="glass-panel glow">
-            <div className="panel-header">
-              <h2>🗣️ Tutor: {assignedTutor ? assignedTutor.name : "ट्यूटर असाइन नहीं है"}</h2>
+        <div className="student-classroom-wrapper">
+          {/* Left Panel: Collapsible Syllabus/Roadmap */}
+          <aside className={`student-syllabus-panel ${syllabusCollapsed ? "collapsed" : ""}`}>
+            <div className="syllabus-header">
+              <h3>📖 Checklist ({progressPercent}%)</h3>
+              <button 
+                type="button"
+                className="btn-collapse-syllabus" 
+                onClick={() => setSyllabusCollapsed(!syllabusCollapsed)}
+                title={syllabusCollapsed ? "Expand Syllabus" : "Collapse Syllabus"}
+              >
+                {syllabusCollapsed ? "➡️" : "⬅️"}
+              </button>
+            </div>
+            
+            {!syllabusCollapsed && (
+              <div className="syllabus-content">
+                <div className="roadmap-checklist">
+                  {activePlanSteps.length === 0 ? (
+                    <p className="no-data-text">कोई पाठ चरण असाइन नहीं किया गया है।</p>
+                  ) : (
+                    activePlanSteps.map((step, idx) => {
+                      let itemClass = "upcoming";
+                      let icon = "⏱️";
+                      if (idx === studentCurrentStep) {
+                        itemClass = "active";
+                        icon = "⚡";
+                      } else if (idx < studentCurrentStep) {
+                        itemClass = "completed";
+                        icon = "✅";
+                      }
+                      return (
+                        <div key={idx} className={`checklist-item ${itemClass}`}>
+                          <span className="checklist-icon">{icon}</span>
+                          <span className="checklist-text">{step}</span>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+          </aside>
+
+          {/* Center Panel: Blackboard & Active Content */}
+          <section className="student-center-panel">
+            <div className="center-panel-header">
+              <h2>
+                {studentActiveTab === "analytics"
+                  ? "📈 My Progress & Analytics"
+                  : activeQuiz 
+                    ? "✍️ Interactive Quiz (प्रश्नोत्तरी)" 
+                    : `📋 Blackboard: ${visualCode ? visualCode.title : "इंटरेक्टिव बोर्ड"}`
+                }
+              </h2>
+              <button 
+                type="button"
+                className="btn-analytics-toggle" 
+                onClick={() => setStudentActiveTab(studentActiveTab === "analytics" ? "classroom" : "analytics")}
+              >
+                {studentActiveTab === "analytics" ? "📺 View Classroom" : "📈 View Progress"}
+              </button>
             </div>
 
-            <div className="panel-content">
-              {/* Tab Navigation */}
-              <div className="tab-navigation" style={{ marginBottom: "1.25rem" }}>
-                <button 
-                  className={`tab-btn ${studentActiveTab === "classroom" ? "active" : ""}`}
-                  onClick={() => setStudentActiveTab("classroom")}
-                >
-                  🗣️ Live Classroom (लाइव कक्षा)
-                </button>
-                <button 
-                  className={`tab-btn ${studentActiveTab === "analytics" ? "active" : ""}`}
-                  onClick={() => setStudentActiveTab("analytics")}
-                >
-                  📊 My Progress & Analytics (प्रगति विवरण)
-                </button>
-              </div>
-
-              {studentActiveTab === "classroom" && (
-                <>
-                  {/* Settings / Connection Controls */}
-                  {!connected ? (
-                    <div className="classroom-init-settings">
-                      <div className="student-badge-info" style={{ marginBottom: "0.5rem" }}>
-                        👤 विद्यार्थी का नाम: <strong>{activeStudent.name}</strong>
-                      </div>
-                      {assignedTutor ? (
-                        <>
-                          <div className="tutor-assigned-preview">
-                            <p><strong>assigned tutor settings:</strong></p>
-                            <ul>
-                              <li>भाषा: {assignedTutor.dialect === "awadhi" ? "अवधी (Awadhi)" : assignedTutor.dialect === "bhojpuri" ? "भोजपुरी (Bhojpuri)" : assignedTutor.dialect === "hindi" ? "हिंदी" : "Adapt"}</li>
-                              <li>गति: {assignedTutor.pace}</li>
-                            </ul>
-                          </div>
-                          <div className="settings-row" style={{ gap: "0.5rem", marginBottom: "1rem" }}>
-                            <div className="settings-group half-width">
-                              <label>Choose Dialect (बोली)</label>
-                              <select className="input-key select-custom" value={activeDialect} onChange={(e) => setActiveDialect(e.target.value)}>
-                                <option value="awadhi">Awadhi (अवधी)</option>
-                                <option value="bhojpuri">Bhojpuri (भोजपुरी)</option>
-                                <option value="hindi">Hindi (हिंदी)</option>
-                                <option value="auto">Auto-Adapt (स्वचालित)</option>
-                              </select>
-                            </div>
-                            <div className="settings-group half-width">
-                              <label>Choose Pace (गति)</label>
-                              <select className="input-key select-custom" value={activePace} onChange={(e) => setActivePace(e.target.value)}>
-                                <option value="slow">Slow (धीमी)</option>
-                                <option value="normal">Normal (सामान्य)</option>
-                                <option value="fast">Fast (तेज़)</option>
-                              </select>
-                            </div>
-                          </div>
-                          <button className="btn-connect" onClick={connectSession} disabled={connecting}>
-                            {connecting ? "कनेक्ट हो रहा है..." : "ट्यूटर से जुड़ें (Start Classroom)"}
-                          </button>
-                          <button 
-                            className="btn-connect disconnect" 
-                            style={{ marginTop: "0.5rem", width: "100%" }}
-                            onClick={() => handleResetStudentProgress(activeStudentId)}
-                            disabled={connecting}
-                          >
-                            🔄 Reset Progress & Lesson (रीसेट प्रगति)
-                          </button>
-                        </>
-                      ) : (
-                        <div className="alert-error" style={{ background: "rgba(239, 68, 68, 0.05)", border: "1px solid rgba(239, 68, 68, 0.15)", color: "#ef4444" }}>
-                          ⚠️ ट्यूटर असाइन नहीं है। कृपया कोऑर्डिनेटर हब में जाकर इस विद्यार्थी को ट्यूटर असाइन करें।
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="connected-classroom-header">
-                      <div className="student-badge-info">
-                        👤 <strong>{activeStudent.name}</strong> | 🗣️ {activeDialect === "awadhi" ? "अवधी" : activeDialect === "bhojpuri" ? "भोजपुरी" : activeDialect === "hindi" ? "हिंदी" : "Auto-adapt"}
-                      </div>
-                      <button className="btn-connect disconnect" onClick={disconnectSession} style={{ padding: "0.4rem 0.8rem", fontSize: "0.8rem" }}>
-                        डिस्कनेक्ट (Close Session)
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Checklist Roadmap */}
-                  <div className="student-checklist-container">
-                    <h3>📖 Lesson Roadmap Checklist ({progressPercent}%)</h3>
-                    <div className="roadmap-checklist">
-                      {activePlanSteps.length === 0 ? (
-                        <p className="no-data-text">कोई पाठ चरण असाइन नहीं किया गया है।</p>
-                      ) : (
-                        activePlanSteps.map((step, idx) => {
-                          let itemClass = "upcoming";
-                          let icon = "⏱️";
-                          if (idx === studentCurrentStep) {
-                            itemClass = "active";
-                            icon = "⚡";
-                          } else if (idx < studentCurrentStep) {
-                            itemClass = "completed";
-                            icon = "✅";
-                          }
-                          return (
-                            <div key={idx} className={`checklist-item ${itemClass}`}>
-                              <span className="checklist-icon">{icon}</span>
-                              <span className="checklist-text">{step}</span>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-
-                    {connected && (
-                      <div className="quick-actions-bar">
-                        <button type="button" className="btn-quick-action proceed" onClick={triggerNextStep}>
-                          आगे बढ़ें (Next Step) 👉
-                        </button>
-                        <button type="button" className="btn-quick-action quiz" onClick={triggerQuiz}>
-                          📝 Take Quiz
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Avatar Wave animation */}
-                  <div className="avatar-container">
-                    <div className={`avatar-outer ${connected ? "active" : ""}`}>
-                      <div className="visualizer-rings" />
-                      <div className={`avatar-core ${isRecording ? "recording" : connected ? "speaking" : ""}`}>
-                        <div className="avatar-icon-glow" />
-                        <span style={{ fontSize: "2rem" }}>🪐</span>
-                      </div>
-                    </div>
-                    {connected && (
-                      <div className="speech-waves">
-                        <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
-                        <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
-                        <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
-                        <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
-                        <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Transcript subtitles */}
-                  <div className="transcript-panel">
-                    <h3>संवाद विवरण (Transcript)</h3>
-                    <div className="transcript-area">
-                      {transcript.map((msg, i) => (
-                        <div key={i} className={`msg ${msg.sender}`}>
-                          <span className="speaker-label">{msg.sender}</span>
-                          <p>{msg.text}</p>
-                        </div>
-                      ))}
-                      <div ref={transcriptEndRef} />
-                    </div>
-                  </div>
-
-                  {/* Mic Controls */}
-                  <div className="mic-controls">
-                    <button
-                      className={`btn-mic ${isRecording ? "recording" : ""}`}
-                      onClick={toggleRecording}
-                      disabled={!connected}
-                    >
-                      {isRecording ? (
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                          <rect x="6" y="6" width="12" height="12" rx="2" />
-                        </svg>
-                      ) : (
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
-                          <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
-                        </svg>
-                      )}
-                    </button>
-                  </div>
-
-                  {/* Text Input fallback */}
-                  {connected && (
-                    <form onSubmit={handleSendText} style={{ display: "flex", gap: "0.5rem" }}>
-                      <input
-                        type="text"
-                        className="input-key"
-                        placeholder="अपना संदेह यहाँ टाइप करें..."
-                        value={textInput}
-                        onChange={(e) => setTextInput(e.target.value)}
-                      />
-                      <button type="submit" className="btn-connect" style={{ padding: "0.6rem 1rem" }}>
-                        भेजें
-                      </button>
-                    </form>
-                  )}
-                </>
-              )}
-
-              {studentActiveTab === "analytics" && (
+            <div className="center-panel-content">
+              {studentActiveTab === "analytics" ? (
                 <div className="analytics-tab-content" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
                   {/* Progress Meter */}
                   <div className="dashboard-progress-section">
                     <div className="progress-labels">
-                      <span>📖 overall course checklist progress</span>
+                      <span>📖 Course Progress</span>
                       <span>{progressPercent}%</span>
                     </div>
                     <div className="progress-track-bg">
@@ -2163,22 +2161,18 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
 
                   {/* Score & performance grade */}
                   <div style={{ display: "flex", gap: "1.25rem", alignItems: "center" }}>
-                    {/* Circle Gauge */}
                     {(() => {
                       let borderCol = "#06b6d4";
                       let textCol = "#06b6d4";
-                      let performanceGrade = "Progressing";
                       let shadowVal = "0 0 15px rgba(6, 182, 212, 0.3)";
 
                       if (studentQuizScore >= 80) {
                         borderCol = "#10b981";
                         textCol = "#10b981";
-                        performanceGrade = "Mastered";
                         shadowVal = "0 0 15px rgba(16, 185, 129, 0.3)";
                       } else if (studentQuizScore < 50) {
                         borderCol = "#ef4444";
                         textCol = "#ef4444";
-                        performanceGrade = "Needs Focus";
                         shadowVal = "0 0 15px rgba(239, 68, 68, 0.3)";
                       }
 
@@ -2189,15 +2183,13 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
                             borderColor: borderCol,
                             boxShadow: shadowVal 
                           }}
-                          title={`Performance: ${performanceGrade}`}
                         >
                           <span className="score-val" style={{ color: textCol }}>{studentQuizScore}</span>
-                          <span className="score-lbl">quiz score</span>
+                          <span className="score-lbl">Quiz Score</span>
                         </div>
                       );
                     })()}
 
-                    {/* Grade Text Description */}
                     <div>
                       <h4 style={{ margin: "0 0 0.25rem 0", fontSize: "1.1rem" }}>
                         Status:{" "}
@@ -2211,7 +2203,7 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
                         </span>
                       </h4>
                       <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                        Based on your latest interactive quiz performance in {assignedTutor ? assignedTutor.subject : "the course"}.
+                        Based on your latest interactive quiz performance.
                       </p>
                     </div>
                   </div>
@@ -2245,7 +2237,7 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
                     </div>
                   </div>
 
-                  {/* AI Qualitative Recommendations */}
+                  {/* AI Recommendations */}
                   <div className="diagnostics-card flex-grow-card">
                     <h3>💡 Personalized AI Recommendations</h3>
                     <div className="summary-text-box" style={{ maxHeight: "none" }}>
@@ -2253,99 +2245,227 @@ ${studentToExport.diagnostics || "No diagnostics summary logged yet."}
                     </div>
                   </div>
                 </div>
+              ) : (
+                /* Blackboard active quiz or simulation */
+                <div className="blackboard-workspace">
+                  {activeQuiz ? (
+                    <div className="quiz-card-box">
+                      <div className="quiz-question-container">
+                        <span className="quiz-icon">❓</span>
+                        <p className="quiz-question-text">{activeQuiz.question}</p>
+                      </div>
+                      
+                      <div className="quiz-options-list">
+                        {activeQuiz.options.map((option, idx) => {
+                          const isSelected = activeQuiz.selectedOptionIndex === idx;
+                          const isCorrect = idx === activeQuiz.correctOptionIndex;
+                          let btnClass = "quiz-option-btn";
+                          
+                          if (activeQuiz.submitted) {
+                            if (isCorrect) {
+                              btnClass += " correct-option";
+                            } else if (isSelected) {
+                              btnClass += " incorrect-option";
+                            } else {
+                              btnClass += " disabled-option";
+                            }
+                          } else if (isSelected) {
+                            btnClass += " selected-option";
+                          }
+                          
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              className={btnClass}
+                              disabled={activeQuiz.submitted}
+                              onClick={() => handleSelectQuizOption(idx)}
+                            >
+                              <span className="option-letter">{String.fromCharCode(65 + idx)}.</span>
+                              <span className="option-text">{option}</span>
+                              {activeQuiz.submitted && isCorrect && <span className="feedback-icon">✅</span>}
+                              {activeQuiz.submitted && isSelected && !isCorrect && <span className="feedback-icon">❌</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      
+                      {activeQuiz.submitted && (
+                        <div className="quiz-feedback-box animate-fade-in">
+                          <p className={`quiz-feedback-status ${activeQuiz.selectedOptionIndex === activeQuiz.correctOptionIndex ? "status-success" : "status-error"}`}>
+                            {activeQuiz.selectedOptionIndex === activeQuiz.correctOptionIndex 
+                              ? "🎉 बिल्कुल सही उत्तर! (Correct)" 
+                              : "⚠️ गलत उत्तर! (Incorrect)"
+                            }
+                          </p>
+                          <p className="quiz-explanation-text">
+                            <strong>स्पष्टीकरण:</strong> {activeQuiz.explanation}
+                          </p>
+                          <button 
+                            type="button"
+                            className="btn-connect" 
+                            style={{ marginTop: "1rem", alignSelf: "flex-end" }}
+                            onClick={() => setActiveQuiz(null)}
+                          >
+                            🔙 Back to Blackboard
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : visualCode ? (
+                    <VisualBoard visualCode={visualCode} />
+                  ) : (
+                    <div className="blackboard-empty">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+                        <rect x="3" y="3" width="18" height="18" rx="2" />
+                        <path d="M9 17l3-3 3 3" />
+                        <path d="M9 7h6" />
+                        <path d="M9 11h6" />
+                      </svg>
+                      <h3>ब्लैकबोर्ड खाली है</h3>
+                      <p>ट्यूटर से {assignedTutor ? assignedTutor.subject : "विषय"} का कोई नियम पूछें। ट्यूटर समझाने के लिए यहाँ एक जीवंत एनीमेशन बनाएगा।</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Floating controls dock at the bottom of the Center Panel */}
+            <div className="student-controls-dock">
+              {!connected ? (
+                <div className="classroom-init-settings glass-panel" style={{ width: "100%", padding: "1rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem", alignItems: "center" }}>
+                    <div className="student-badge-info" style={{ fontSize: "0.95rem" }}>
+                      👤 Student: <strong>{activeStudent.name}</strong>
+                    </div>
+                    {assignedTutor ? (
+                      <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+                        <div className="settings-group" style={{ margin: 0 }}>
+                          <select className="input-key select-custom select-inline" value={activeDialect} onChange={(e) => setActiveDialect(e.target.value)}>
+                            <option value="awadhi">Awadhi (अवधी)</option>
+                            <option value="bhojpuri">Bhojpuri (भोजपुरी)</option>
+                            <option value="hindi">Hindi (हिंदी)</option>
+                            <option value="auto">Auto-Adapt</option>
+                          </select>
+                        </div>
+                        <div className="settings-group" style={{ margin: 0 }}>
+                          <select className="input-key select-custom select-inline" value={activePace} onChange={(e) => setActivePace(e.target.value)}>
+                            <option value="slow">Slow</option>
+                            <option value="normal">Normal</option>
+                            <option value="fast">Fast</option>
+                          </select>
+                        </div>
+                        <button type="button" className="btn-connect" onClick={connectSession} disabled={connecting} style={{ padding: "0.5rem 1rem" }}>
+                          {connecting ? "Connecting..." : "🚀 Start Classroom"}
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="no-tutor-warn">⚠️ No Tutor Assigned</span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                studentActiveTab !== "analytics" && (
+                  <div className="dock-active-row">
+                    <div className="dock-actions">
+                      <button type="button" className="btn-quick-action proceed" onClick={triggerNextStep}>
+                        आगे बढ़ें (Next Step) 👉
+                      </button>
+                      <button type="button" className="btn-quick-action quiz" onClick={triggerQuiz}>
+                        📝 Take Quiz
+                      </button>
+                    </div>
+                    
+                    <div className="dock-mic-input-group">
+                      <button
+                        type="button"
+                        className={`btn-mic-dock ${isRecording ? "recording" : ""}`}
+                        onClick={toggleRecording}
+                        title={isRecording ? "Stop Recording" : "Start Voice Input"}
+                      >
+                        {isRecording ? (
+                          <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                            <rect x="6" y="6" width="12" height="12" rx="2" />
+                          </svg>
+                        ) : (
+                          <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+                            <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+                          </svg>
+                        )}
+                      </button>
+
+                      <form onSubmit={handleSendText} className="dock-text-form">
+                        <input
+                          type="text"
+                          className="input-key dock-text-input"
+                          placeholder="अपना संदेह यहाँ टाइप करें..."
+                          value={textInput}
+                          onChange={(e) => setTextInput(e.target.value)}
+                        />
+                        <button type="submit" className="btn-send-dock">भेजें</button>
+                      </form>
+                    </div>
+                  </div>
+                )
               )}
             </div>
           </section>
 
-          {/* Right Column: Blackboard visuals */}
-          <section className="glass-panel">
-            <div className="panel-header" style={{ background: "#05050e" }}>
-              <h2>
-                {activeQuiz 
-                  ? "✍️ Interactive Quiz (प्रश्नोत्तरी)" 
-                  : `📋 Blackboard: ${visualCode ? visualCode.title : "इंटरेक्टिव बोर्ड"}`
-                }
-              </h2>
+          {/* Right Panel: Conversation Feed & Avatar */}
+          <aside className="student-interaction-panel">
+            <div className="interaction-header">
+              <h3>🗣️ AI Tutor</h3>
+              {connected && (
+                <button type="button" className="btn-close-session" onClick={disconnectSession}>
+                  🔌 Close Session
+                </button>
+              )}
             </div>
-            
-            {activeQuiz ? (
-              <div className="quiz-card-box">
-                <div className="quiz-question-container">
-                  <span className="quiz-icon">❓</span>
-                  <p className="quiz-question-text">{activeQuiz.question}</p>
-                </div>
-                
-                <div className="quiz-options-list">
-                  {activeQuiz.options.map((option, idx) => {
-                    const isSelected = activeQuiz.selectedOptionIndex === idx;
-                    const isCorrect = idx === activeQuiz.correctOptionIndex;
-                    let btnClass = "quiz-option-btn";
-                    
-                    if (activeQuiz.submitted) {
-                      if (isCorrect) {
-                        btnClass += " correct-option";
-                      } else if (isSelected) {
-                        btnClass += " incorrect-option";
-                      } else {
-                        btnClass += " disabled-option";
-                      }
-                    } else if (isSelected) {
-                      btnClass += " selected-option";
-                    }
-                    
-                    return (
-                      <button
-                        key={idx}
-                        className={btnClass}
-                        disabled={activeQuiz.submitted}
-                        onClick={() => handleSelectQuizOption(idx)}
-                      >
-                        <span className="option-letter">{String.fromCharCode(65 + idx)}.</span>
-                        <span className="option-text">{option}</span>
-                        {activeQuiz.submitted && isCorrect && <span className="feedback-icon">✅</span>}
-                        {activeQuiz.submitted && isSelected && !isCorrect && <span className="feedback-icon">❌</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-                
-                {activeQuiz.submitted && (
-                  <div className="quiz-feedback-box animate-fade-in">
-                    <p className={`quiz-feedback-status ${activeQuiz.selectedOptionIndex === activeQuiz.correctOptionIndex ? "status-success" : "status-error"}`}>
-                      {activeQuiz.selectedOptionIndex === activeQuiz.correctOptionIndex 
-                        ? "🎉 बिल्कुल सही उत्तर! (Correct)" 
-                        : "⚠️ गलत उत्तर! (Incorrect)"
-                      }
-                    </p>
-                    <p className="quiz-explanation-text">
-                      <strong>स्पष्टीकरण:</strong> {activeQuiz.explanation}
-                    </p>
-                    <button 
-                      className="btn-connect" 
-                      style={{ marginTop: "1rem", alignSelf: "flex-end" }}
-                      onClick={() => setActiveQuiz(null)}
-                    >
-                      🔙 Back to Blackboard
-                    </button>
+
+            {/* Avatar Widget inside sidebar */}
+            <div className="avatar-widget-container glass-panel">
+              <div className="avatar-container">
+                <div className={`avatar-outer ${connected ? "active" : ""}`}>
+                  <div className="visualizer-rings" />
+                  <div className={`avatar-core ${isRecording ? "recording" : connected ? "speaking" : ""}`}>
+                    <div className="avatar-icon-glow" />
+                    <span style={{ fontSize: "2.2rem" }}>🪐</span>
                   </div>
-                )}
+                </div>
               </div>
-            ) : visualCode ? (
-              <VisualBoard visualCode={visualCode} />
-            ) : (
-              <div className="blackboard-empty">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-                  <rect x="3" y="3" width="18" height="18" rx="2" />
-                  <path d="M9 17l3-3 3 3" />
-                  <path d="M9 7h6" />
-                  <path d="M9 11h6" />
-                </svg>
-                <h3>ब्लैकबोर्ड खाली है</h3>
-                <p>ट्यूटर से {assignedTutor ? assignedTutor.subject : "विषय"} का कोई नियम पूछें। ट्यूटर समझाने के लिए यहाँ एक जीवंत एनीमेशन बनाएगा।</p>
+              
+              {connected && (
+                <div className="speech-waves">
+                  <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
+                  <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
+                  <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
+                  <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
+                  <span style={{ animationPlayState: isRecording || connected ? "running" : "paused" }} />
+                </div>
+              )}
+              
+              <div className="tutor-name-label">
+                <strong>{assignedTutor ? assignedTutor.name : "Vernacular AI Tutor"}</strong>
+                <span className="dialect-badge">{activeDialect === "awadhi" ? "अवधी" : activeDialect === "bhojpuri" ? "भोजपुरी" : "हिंदी"}</span>
               </div>
-            )}
-          </section>
-        </main>
+            </div>
+
+            {/* Conversational Transcript Feed */}
+            <div className="transcript-panel">
+              <h3>चर्चा इतिहास (Chat History)</h3>
+              <div className="transcript-area">
+                {transcript.map((msg, i) => (
+                  <div key={i} className={`msg ${msg.sender}`}>
+                    <span className="speaker-label">{msg.sender === "tutor" ? "🤖 Tutor" : "👤 You"}</span>
+                    <p>{msg.text}</p>
+                  </div>
+                ))}
+                <div ref={transcriptEndRef} />
+              </div>
+            </div>
+          </aside>
+        </div>
 
         <div className="debug-toggle-container">
           <button className="btn-debug-toggle" onClick={() => setShowDebug(!showDebug)}>
