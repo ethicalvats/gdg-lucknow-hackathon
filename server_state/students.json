@@ -3,10 +3,16 @@
     "id": "student_1779463652745",
     "name": "Vikas Yadav",
     "assignedTutorId": "tutor_1779463635187",
-    "gaps": [],
-    "strengths": [],
-    "quizScore": 0,
-    "diagnostics": "",
-    "currentStepIndex": 0
+    "gaps": [
+      "Acceleration concept misunderstanding"
+    ],
+    "strengths": [
+      "Inertia concept visual understanding",
+      "Friction effect on distance visual understanding",
+      "Inertia knowledge mastery"
+    ],
+    "quizScore": 50,
+    "diagnostics": "Student completed direct instruction steps but struggled with the final quiz question on force and acceleration. Student opted to end the session.",
+    "currentStepIndex": 3
   }
 ]
